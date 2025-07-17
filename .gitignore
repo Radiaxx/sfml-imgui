@@ -1,0 +1,83 @@
+# Build directories
+build/
+out/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+# Visual Studio files
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.ncb
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.tlb
+*.exp
+*.ilk
+*.lib
+*.a
+*.la
+*.lai
+*.so
+*.dll
+*.dylib
+
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+CMakeUserPresets.json
+CPackConfig.cmake
+CPackSourceConfig.cmake
+*.cmake
+
+# Compiled Object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+*.app
+
+# IDE files
+.vscode/
+.vs/
+.idea/
+.cache/
+*.cbp
+*.workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Dependencies (will be fetched by CMake)
+_deps/
+
+# Backup files
+*~
+*.bak
+*.tmp
+*.temp
