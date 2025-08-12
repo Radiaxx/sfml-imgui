@@ -1,13 +1,17 @@
-#include "game.hpp"
-
-const std::string  WINDOW_TITLE        = "SFML + imGui";
-const sf::Vector2u INITIAL_WINDOW_SIZE = {720u, 480u};
-const unsigned int FRAME_RATE_LIMIT    = 60u;
+#include "app.hpp"
 
 int main()
 {
-    Game game = Game(WINDOW_TITLE, INITIAL_WINDOW_SIZE, FRAME_RATE_LIMIT);
-    game.run();
+    const App::Config config = {"SFML+imGui Scalar Field Renderer", {1280u, 720u}, 60u};
+
+    try
+    {
+        App app(config);
+        app.run();
+    } catch (const std::exception& e)
+    {
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
