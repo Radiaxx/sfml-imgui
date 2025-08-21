@@ -2,7 +2,7 @@
 
 #include "uiManager.hpp"
 
-void UIManager::draw(Heatmap& heatmap)
+void UIManager::update(Heatmap& heatmap)
 {
     const float          initialWidth = 350.0f;
     const ImGuiViewport* viewport     = ImGui::GetMainViewport();
@@ -17,6 +17,8 @@ void UIManager::draw(Heatmap& heatmap)
     ImGui::Begin("Control Panel");
 
     // File selection dropdown
+    ImGui::Text("Dataset Selection");
+
     const auto& dataFiles         = heatmap.getDataFiles();
     int         selectedFileIndex = heatmap.getSelectedFileIndex();
     const char* combo_preview_value = (selectedFileIndex >= 0) ? dataFiles[selectedFileIndex].c_str() : "Select a file...";
@@ -44,7 +46,9 @@ void UIManager::draw(Heatmap& heatmap)
         ImGui::EndCombo();
     }
 
+    ImGui::Spacing();
     ImGui::Separator();
+    ImGui::Spacing();
 
     // Display loaded file info
     if (heatmap.getAscData())
@@ -53,12 +57,47 @@ void UIManager::draw(Heatmap& heatmap)
 
         const auto& header = heatmap.getAscData()->getHeader();
         ImGui::Text("  - Dimensions: %d x %d", header.ncols, header.nrows);
-        ImGui::Text("  - Cell Size: %.4f", header.cellsize);
-        ImGui::Text("  - Min/Max: %.2f / %.2f", heatmap.getAscData()->getMinValue(), heatmap.getAscData()->getMaxValue());
+        ImGui::Text("  - Cell Size: %.3f", header.cellsize);
+        ImGui::Text("  - Min/Max: %.3f / %.3f", heatmap.getAscData()->getMinValue(), heatmap.getAscData()->getMaxValue());
     }
     else
     {
         ImGui::Text("No data loaded.");
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Display colormap selection
+    ImGui::Text("Colormap Selection");
+
+    const auto& colormapNames = heatmap.getColormapNames();
+    int         colormapID    = heatmap.getCurrentColormapID();
+
+    // Since colormapID is initialized to 0 this will always be valid
+    const char* colormap_preview_value = colormapNames[colormapID].c_str();
+
+    if (ImGui::BeginCombo("Colormap", colormap_preview_value))
+    {
+        for (int i = 0; i < colormapNames.size(); ++i)
+        {
+            const bool is_selected = (colormapID == i);
+            if (ImGui::Selectable(colormapNames[i].c_str(), is_selected))
+            {
+                if (colormapID != i)
+                {
+                    heatmap.setCurrentColormapID(i);
+                }
+            }
+
+            if (is_selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
     }
 
     ImGui::End();

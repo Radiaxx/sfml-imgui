@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "app.hpp"
 
 int main()
@@ -10,6 +12,7 @@ int main()
         app.run();
     } catch (const std::exception& e)
     {
+        std::cerr << "Application error: " << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 

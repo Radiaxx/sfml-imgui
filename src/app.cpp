@@ -1,6 +1,7 @@
-#include "app.hpp"
 #include <SFML/Graphics.hpp>
 #include <SFML/Window/Event.hpp>
+
+#include "app.hpp"
 
 App::App(const Config& config) : m_window(sf::VideoMode(config.initialWindowSize), config.title)
 {
@@ -42,12 +43,22 @@ void App::handleEvents()
 void App::update(float deltaTime)
 {
     ImGui::SFML::Update(m_window, sf::seconds(deltaTime));
-    m_uiManager.draw(m_heatmap);
+    m_uiManager.update(m_heatmap);
 }
 
 void App::render()
 {
     m_window.clear(sf::Color::Black);
+
+    if (m_heatmap.getAscData())
+    {
+        sf::Shader& shader = m_heatmap.getHeatmapShader();
+
+        // Set the shader's inputs (uniforms) for this frame
+        shader.setUniform("u_scalarTexture", sf::Shader::CurrentTexture);
+        shader.setUniform("u_colormapID", m_heatmap.getCurrentColormapID());
+        m_window.draw(m_heatmap.getHeatmapSprite(), &shader);
+    }
 
     ImGui::SFML::Render(m_window);
 

@@ -6,7 +6,7 @@
 class UIManager
 {
 public:
-    void draw(Heatmap& heatmap);
+    void update(Heatmap& heatmap);
 };
 
 #endif
