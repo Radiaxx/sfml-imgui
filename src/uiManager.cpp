@@ -72,7 +72,7 @@ void UIManager::update(Heatmap& heatmap)
     // Display colormap selection
     ImGui::Text("Colormap Selection");
 
-    const auto& colormapNames = heatmap.getColormapNames();
+    const auto& colormapNames = Heatmap::COLORMAP_NAMES;
     int         colormapID    = heatmap.getCurrentColormapID();
 
     // Since colormapID is initialized to 0 this will always be valid

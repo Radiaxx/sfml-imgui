@@ -11,6 +11,9 @@
 class Heatmap
 {
 public:
+    static inline const std::vector<std::string> COLORMAP_NAMES =
+        {"Blue-to-Red", "Grayscale", "Jet", "Turbo", "Viridis", "Plasma", "Inferno", "Magma"};
+
     Heatmap();
 
     void loadData(int fileIndex);
@@ -18,7 +21,6 @@ public:
 
     const std::unique_ptr<AscParser>& getAscData() const;
     const std::vector<std::string>&   getDataFiles() const;
-    const std::vector<std::string>&   getColormapNames() const;
     int                               getSelectedFileIndex() const;
     int                               getCurrentColormapID() const;
     const sf::Texture&                getHeatmapTexture() const;
@@ -28,7 +30,6 @@ public:
 private:
     std::unique_ptr<AscParser> m_ascData;
     std::vector<std::string>   m_dataFiles;
-    std::vector<std::string>   m_colormapNames;
 
     int m_selectedFileIndex = -1;
     int m_currentColormapID = 0;

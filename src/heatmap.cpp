@@ -7,8 +7,6 @@ Heatmap::Heatmap() : m_heatmapSprite(m_heatmapTexture)
 {
     scanDataDirectory();
 
-    m_colormapNames = {"Blue-to-Red", "Grayscale"};
-
     const std::string shaderFolderPath  = SHADERS_PATH;
     const std::string heatmapShaderPath = shaderFolderPath + "/heatmap.frag";
 
@@ -119,11 +117,6 @@ const std::vector<std::string>& Heatmap::getDataFiles() const
     return m_dataFiles;
 }
 
-const std::vector<std::string>& Heatmap::getColormapNames() const
-{
-    return m_colormapNames;
-}
-
 int Heatmap::getSelectedFileIndex() const
 {
     return m_selectedFileIndex;
@@ -132,6 +125,8 @@ int Heatmap::getSelectedFileIndex() const
 void Heatmap::setCurrentColormapID(int id)
 {
     m_currentColormapID = id;
+    m_heatmapShader.setUniform("uScalarTexture", sf::Shader::CurrentTexture);
+    m_heatmapShader.setUniform("uColormapID", m_currentColormapID);
 }
 
 int Heatmap::getCurrentColormapID() const

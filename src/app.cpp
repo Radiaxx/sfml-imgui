@@ -52,12 +52,7 @@ void App::render()
 
     if (m_heatmap.getAscData())
     {
-        sf::Shader& shader = m_heatmap.getHeatmapShader();
-
-        // Set the shader's inputs (uniforms) for this frame
-        shader.setUniform("u_scalarTexture", sf::Shader::CurrentTexture);
-        shader.setUniform("u_colormapID", m_heatmap.getCurrentColormapID());
-        m_window.draw(m_heatmap.getHeatmapSprite(), &shader);
+        m_window.draw(m_heatmap.getHeatmapSprite(), &m_heatmap.getHeatmapShader());
     }
 
     ImGui::SFML::Render(m_window);
