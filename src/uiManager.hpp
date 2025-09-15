@@ -6,7 +6,14 @@
 class UIManager
 {
 public:
+    UIManager(sf::View view) : m_view(view) {};
+
     void update(Heatmap& heatmap);
+
+    void setView(sf::View view);
+
+private:
+    sf::View m_view;
 };
 
 #endif

@@ -18,6 +18,7 @@ public:
 
     void loadData(int fileIndex);
     void setCurrentColormapID(int id);
+    void updateHeatmapView(sf::View view);
 
     const std::unique_ptr<AscParser>& getAscData() const;
     const std::vector<std::string>&   getDataFiles() const;

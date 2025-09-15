@@ -4,7 +4,10 @@
 
 int main()
 {
-    const App::Config config = {"SFML+imGui Scalar Field Renderer", {1280u, 720u}, 60u};
+    const sf::Vector2u initialWindowSize = {1280u, 720u};
+    const sf::Vector2u minimumWindowSize = {854u, 480u};
+    const unsigned int frameRateLimit    = 60u;
+    const App::Config config = {"SFML+imGui Scalar Field Renderer", initialWindowSize, minimumWindowSize, frameRateLimit};
 
     try
     {

@@ -1,6 +1,6 @@
-#include <imgui.h>
-
 #include "uiManager.hpp"
+#include <imgui.h>
+#include <iostream>
 
 void UIManager::update(Heatmap& heatmap)
 {
@@ -34,6 +34,7 @@ void UIManager::update(Heatmap& heatmap)
                 if (selectedFileIndex != i)
                 {
                     heatmap.loadData(i);
+                    heatmap.updateHeatmapView(m_view);
                 }
             }
 
@@ -101,4 +102,9 @@ void UIManager::update(Heatmap& heatmap)
     }
 
     ImGui::End();
+}
+
+void UIManager::setView(sf::View view)
+{
+    m_view = view;
 }

@@ -3,9 +3,12 @@
 
 #include "app.hpp"
 
-App::App(const Config& config) : m_window(sf::VideoMode(config.initialWindowSize), config.title)
+App::App(const Config& config) :
+m_window(sf::VideoMode(config.initialWindowSize), config.title),
+m_uiManager(sf::View(static_cast<sf::FloatRect>(m_window.getViewport(m_window.getDefaultView()))))
 {
-    m_window.setMinimumSize(config.initialWindowSize); // TODO: Change this to a reasonable value
+    m_window.setMinimumSize(config.minimumWindowSize);
+    m_window.setSize(config.initialWindowSize);
     m_window.setFramerateLimit(config.frameRateLimit);
 
     if (!ImGui::SFML::Init(m_window))
@@ -70,7 +73,8 @@ void App::handleWindowResize(const sf::Event::Resized& resized)
     sf::Vector2u  windowSize(resized.size.x, resized.size.y);
     sf::FloatRect visibleArea({0.f, 0.f}, static_cast<sf::Vector2f>(windowSize));
 
-    m_window.setView(sf::View(visibleArea));
-
-    sf::Vector2f newSize(static_cast<float>(resized.size.x), static_cast<float>(resized.size.y));
+    const sf::View view = sf::View(visibleArea);
+    m_window.setView(view);
+    m_uiManager.setView(view);
+    m_heatmap.updateHeatmapView(view);
 }

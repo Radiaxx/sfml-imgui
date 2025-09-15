@@ -38,6 +38,73 @@ void Heatmap::loadData(int fileIndex)
     }
 }
 
+void Heatmap::setCurrentColormapID(int id)
+{
+    m_currentColormapID = id;
+    m_heatmapShader.setUniform("uScalarTexture", sf::Shader::CurrentTexture);
+    m_heatmapShader.setUniform("uColormapID", m_currentColormapID);
+}
+
+void Heatmap::updateHeatmapView(sf::View view)
+{
+    if (!m_ascData)
+    {
+        return;
+    }
+
+    const sf::Vector2f textureSize(m_heatmapTexture.getSize());
+    const sf::Vector2f viewSize = view.getSize();
+
+    // Calculate the scale factor to fit the texture within the view while preserving aspect ratio
+    float scaleX = viewSize.x / textureSize.x;
+    float scaleY = viewSize.y / textureSize.y;
+    float scale  = std::min(scaleX, scaleY);
+
+    m_heatmapSprite.setScale({scale, scale});
+
+    // Center the sprite within the view
+    const sf::FloatRect spriteBounds = m_heatmapSprite.getGlobalBounds();
+    const float         posX         = (viewSize.x - spriteBounds.size.x) * 0.5f;
+    const float         posY         = (viewSize.y - spriteBounds.size.y) * 0.5f;
+
+    m_heatmapSprite.setPosition({posX, posY});
+}
+
+const std::unique_ptr<AscParser>& Heatmap::getAscData() const
+{
+    return m_ascData;
+}
+
+const std::vector<std::string>& Heatmap::getDataFiles() const
+{
+    return m_dataFiles;
+}
+
+int Heatmap::getSelectedFileIndex() const
+{
+    return m_selectedFileIndex;
+}
+
+int Heatmap::getCurrentColormapID() const
+{
+    return m_currentColormapID;
+}
+
+const sf::Texture& Heatmap::getHeatmapTexture() const
+{
+    return m_heatmapTexture;
+}
+
+const sf::Sprite& Heatmap::getHeatmapSprite() const
+{
+    return m_heatmapSprite;
+}
+
+sf::Shader& Heatmap::getHeatmapShader()
+{
+    return m_heatmapShader;
+}
+
 void Heatmap::scanDataDirectory()
 {
     const std::string dataFolderPath   = DATA_PATH;
@@ -105,46 +172,4 @@ void Heatmap::createHeatmapTexture()
     }
 
     m_heatmapSprite.setTexture(m_heatmapTexture, true);
-}
-
-const std::unique_ptr<AscParser>& Heatmap::getAscData() const
-{
-    return m_ascData;
-}
-
-const std::vector<std::string>& Heatmap::getDataFiles() const
-{
-    return m_dataFiles;
-}
-
-int Heatmap::getSelectedFileIndex() const
-{
-    return m_selectedFileIndex;
-}
-
-void Heatmap::setCurrentColormapID(int id)
-{
-    m_currentColormapID = id;
-    m_heatmapShader.setUniform("uScalarTexture", sf::Shader::CurrentTexture);
-    m_heatmapShader.setUniform("uColormapID", m_currentColormapID);
-}
-
-int Heatmap::getCurrentColormapID() const
-{
-    return m_currentColormapID;
-}
-
-const sf::Texture& Heatmap::getHeatmapTexture() const
-{
-    return m_heatmapTexture;
-}
-
-const sf::Sprite& Heatmap::getHeatmapSprite() const
-{
-    return m_heatmapSprite;
-}
-
-sf::Shader& Heatmap::getHeatmapShader()
-{
-    return m_heatmapShader;
 }

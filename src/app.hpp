@@ -19,6 +19,7 @@ public:
     {
         std::string  title;
         sf::Vector2u initialWindowSize;
+        sf::Vector2u minimumWindowSize;
         unsigned int frameRateLimit;
     };
 
@@ -33,6 +34,9 @@ private:
 
     Heatmap   m_heatmap;
     UIManager m_uiManager;
+
+    bool         m_isPanning = false;
+    sf::Vector2i m_lastMousePos;
 
     void handleEvents();
     void update(float deltaTime);
