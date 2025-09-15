@@ -12,7 +12,7 @@ class Heatmap
 {
 public:
     static inline const std::vector<std::string> COLORMAP_NAMES =
-        {"Blue-to-Red", "Grayscale", "Jet", "Turbo", "Viridis", "Plasma", "Inferno", "Magma"};
+        {"Blue-to-Red", "Grayscale", "Jet", "Turbo", "Viridis", "Plasma", "Inferno", "Magma", "Gist Earth", "Terrain"};
 
     Heatmap();
 
