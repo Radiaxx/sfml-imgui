@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "UIManager.hpp"
 #include "heatmap.hpp"
-#include "utils/AscParser.hpp"
+#include "uiManager.hpp"
+#include "viewControls.hpp"
 
 class App
 {
@@ -32,11 +32,9 @@ private:
     sf::RenderWindow m_window;
     sf::Clock        m_clock;
 
-    Heatmap   m_heatmap;
-    UIManager m_uiManager;
-
-    bool         m_isPanning = false;
-    sf::Vector2i m_lastMousePos;
+    Heatmap      m_heatmap;
+    UIManager    m_uiManager;
+    ViewControls m_viewControls;
 
     void handleEvents();
     void update(float deltaTime);

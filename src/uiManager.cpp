@@ -1,6 +1,5 @@
 #include "uiManager.hpp"
 #include <imgui.h>
-#include <iostream>
 
 void UIManager::update(Heatmap& heatmap)
 {
@@ -9,9 +8,8 @@ void UIManager::update(Heatmap& heatmap)
     ImVec2               window_pos(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y);
     ImVec2               window_pos_pivot(1.0f, 0.0f); // Pivot to top right
 
-    // ImGuiCond_FirstUseEver to make the ui position and size persistent
-    ImGui::SetNextWindowPos(window_pos, ImGuiCond_FirstUseEver, window_pos_pivot);
-    ImGui::SetNextWindowSize(ImVec2(initialWidth, 0.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_None, window_pos_pivot);
+    ImGui::SetNextWindowSize(ImVec2(initialWidth, 0.0f), ImGuiCond_None);
     ImGui::SetNextWindowBgAlpha(0.75f);
 
     ImGui::Begin("Control Panel");

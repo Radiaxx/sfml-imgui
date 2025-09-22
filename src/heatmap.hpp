@@ -1,12 +1,11 @@
 #ifndef HEATMAP_HPP
 #define HEATMAP_HPP
 
+#include <AscParser.hpp>
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "utils/AscParser.hpp"
 
 class Heatmap
 {

@@ -40,6 +40,26 @@ void App::handleEvents()
 {
     m_window.handleEvents([this](const sf::Event::Closed&) { this->handleWindowClose(); },
                           [this](const sf::Event::Resized& event) { this->handleWindowResize(event); },
+                          [this](const sf::Event::MouseWheelScrolled& event)
+                          {
+                              m_viewControls.handleMouseWheelScrolled(event, m_window);
+                              ImGui::SFML::ProcessEvent(m_window, event);
+                          },
+                          [this](const sf::Event::MouseButtonPressed& event)
+                          {
+                              m_viewControls.handleMouseButtonPressed(event);
+                              ImGui::SFML::ProcessEvent(m_window, event);
+                          },
+                          [this](const sf::Event::MouseButtonReleased& event)
+                          {
+                              m_viewControls.handleMouseButtonReleased(event);
+                              ImGui::SFML::ProcessEvent(m_window, event);
+                          },
+                          [this](const sf::Event::MouseMoved& event)
+                          {
+                              m_viewControls.handleMouseMoved(event, m_window);
+                              ImGui::SFML::ProcessEvent(m_window, event);
+                          },
                           [this](const auto& event) { ImGui::SFML::ProcessEvent(m_window, event); });
 }
 
