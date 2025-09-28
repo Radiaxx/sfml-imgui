@@ -58,10 +58,44 @@ void UIManager::update(Heatmap& heatmap)
         ImGui::Text("  - Dimensions: %d x %d", header.ncols, header.nrows);
         ImGui::Text("  - Cell Size: %.3f", header.cellsize);
         ImGui::Text("  - Min/Max: %.3f / %.3f", heatmap.getAscData()->getMinValue(), heatmap.getAscData()->getMaxValue());
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::Text("Value Clamping:");
+
+        bool isAuto = heatmap.isAutoClamping();
+        if (ImGui::Checkbox("Auto clamp to View", &isAuto))
+        {
+            heatmap.setAutoClamp(isAuto);
+        }
+
+        // Disable the manual slider if auto clamping is on
+        if (isAuto)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        float           minVal    = heatmap.getManualClampMin();
+        float           maxVal    = heatmap.getManualClampMax();
+        constexpr float dragSpeed = 1.0f;
+
+        ImGui::DragFloatRange2("min/max Range", &minVal, &maxVal, dragSpeed, heatmap.getGlobalMin(), heatmap.getGlobalMax());
+
+        if (minVal != heatmap.getManualClampMin() || maxVal != heatmap.getManualClampMax())
+        {
+            heatmap.setManualClampRange(minVal, maxVal);
+        }
+
+        if (isAuto)
+        {
+            ImGui::EndDisabled();
+        }
     }
     else
     {
-        ImGui::Text("No data loaded.");
+        ImGui::TextDisabled("Load data to enable clamping.");
     }
 
     ImGui::Spacing();

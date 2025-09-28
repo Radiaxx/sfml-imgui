@@ -75,11 +75,12 @@ void App::render()
 
     if (m_heatmap.getAscData())
     {
+        m_heatmap.getHeatmapShader().setUniform("uClampMin", m_heatmap.getCurrentClampMin());
+        m_heatmap.getHeatmapShader().setUniform("uClampMax", m_heatmap.getCurrentClampMax());
         m_window.draw(m_heatmap.getHeatmapSprite(), &m_heatmap.getHeatmapShader());
     }
 
     ImGui::SFML::Render(m_window);
-
     m_window.display();
 }
 

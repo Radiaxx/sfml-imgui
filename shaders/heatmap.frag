@@ -1,6 +1,8 @@
 #version 130
 
-uniform sampler2D uScalarTexture; // The grayscale data texture
+uniform sampler2D uFloatTexture;
+uniform float uClampMin;
+uniform float uClampMax;
 uniform int uColormapID;
 
 out vec4 fragColor;
@@ -1890,7 +1892,10 @@ void main()
 {
     // Get the normalized scalar value (0.0 to 1.0) from the red channel (any channel could be used) of our texture
     // gl_TexCoord[0].xy contains the texture coordinates for the current pixel (we are in a fragment shader)
-    float v = texture(uScalarTexture, gl_TexCoord[0].xy).r;
+    float rawValue = texture(uFloatTexture, gl_TexCoord[0].xy).r;
+    float range = uClampMax - uClampMin;
+    float normalizedValue = (range > 0.0) ? (rawValue - uClampMin) / range : 0.0;
+    float v = clamp(normalizedValue, 0.0, 1.0);
 
     switch (uColormapID) {
         case 0:

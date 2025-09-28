@@ -3,6 +3,8 @@
 
 #include "heatmap.hpp"
 
+#define GL_R32F 0x822E // Should be imported by glad. Decide later to import the whole lib or not
+
 Heatmap::Heatmap() : m_heatmapSprite(m_heatmapTexture)
 {
     scanDataDirectory();
@@ -13,6 +15,16 @@ Heatmap::Heatmap() : m_heatmapSprite(m_heatmapTexture)
     if (!m_heatmapShader.loadFromFile(heatmapShaderPath, sf::Shader::Type::Fragment))
     {
         throw std::runtime_error("Failed to load heatmap shader.");
+    }
+}
+
+Heatmap::~Heatmap()
+{
+    // Handle this because of float data custom implementation
+    if (m_heatmapTexture.getNativeHandle() != 0)
+    {
+        GLuint handle = m_heatmapTexture.getNativeHandle();
+        glDeleteTextures(1, &handle);
     }
 }
 
@@ -30,7 +42,17 @@ void Heatmap::loadData(int fileIndex)
         std::string       filepath       = dataFolderPath + "/" + filename;
         m_ascData                        = std::make_unique<AscParser>(filepath);
 
-        createHeatmapTexture();
+        m_globalMin = static_cast<float>(m_ascData->getMinValue());
+        m_globalMax = static_cast<float>(m_ascData->getMaxValue());
+
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+        m_manualClampMin  = m_globalMin;
+        m_manualClampMax  = m_globalMax;
+
+        m_heatmapShader.setUniform("uFloatTexture", sf::Shader::CurrentTexture);
+
+        updateHeatmapTexture();
     } catch (const std::runtime_error& e)
     {
         std::cerr << "Failed to load ASC data: " << e.what() << std::endl;
@@ -41,7 +63,6 @@ void Heatmap::loadData(int fileIndex)
 void Heatmap::setCurrentColormapID(int id)
 {
     m_currentColormapID = id;
-    m_heatmapShader.setUniform("uScalarTexture", sf::Shader::CurrentTexture);
     m_heatmapShader.setUniform("uColormapID", m_currentColormapID);
 }
 
@@ -105,6 +126,41 @@ sf::Shader& Heatmap::getHeatmapShader()
     return m_heatmapShader;
 }
 
+bool Heatmap::isAutoClamping() const
+{
+    return m_isAutoClamping;
+}
+
+float Heatmap::getGlobalMin() const
+{
+    return m_globalMin;
+}
+
+float Heatmap::getGlobalMax() const
+{
+    return m_globalMax;
+}
+
+float Heatmap::getManualClampMin() const
+{
+    return m_manualClampMin;
+}
+
+float Heatmap::getManualClampMax() const
+{
+    return m_manualClampMax;
+}
+
+float Heatmap::getCurrentClampMin() const
+{
+    return m_currentClampMin;
+}
+
+float Heatmap::getCurrentClampMax() const
+{
+    return m_currentClampMax;
+}
+
 void Heatmap::scanDataDirectory()
 {
     const std::string dataFolderPath   = DATA_PATH;
@@ -127,49 +183,86 @@ void Heatmap::scanDataDirectory()
     }
 }
 
-void Heatmap::createHeatmapTexture()
+void Heatmap::updateHeatmapTexture()
 {
     if (!m_ascData)
     {
         return;
     }
 
-    const auto&  header      = m_ascData->getHeader();
-    const auto&  data        = m_ascData->getData();
-    const double minVal      = m_ascData->getMinValue();
-    const double maxVal      = m_ascData->getMaxValue();
-    const double denominator = maxVal - minVal;
+    const auto&        header     = m_ascData->getHeader();
+    const auto&        doubleData = m_ascData->getData();
+    std::vector<float> floatData(doubleData.begin(), doubleData.end());
 
-    sf::Image heatmapImage;
-    heatmapImage.resize({static_cast<unsigned int>(header.ncols), static_cast<unsigned int>(header.nrows)});
-
-    for (int y = 0; y < header.nrows; ++y)
+    if (m_heatmapTexture.getNativeHandle() == 0)
     {
-        for (int x = 0; x < header.ncols; ++x)
+        const bool result = m_heatmapTexture.resize(
+            {static_cast<unsigned int>(header.ncols), static_cast<unsigned int>(header.nrows)});
+
+        if (!result)
         {
-            size_t index = static_cast<size_t>(y) * header.ncols + x;
-            double value = data[index];
-
-            auto pixelPosition = sf::Vector2u(static_cast<unsigned int>(x), static_cast<unsigned int>(y));
-
-            if (value == header.nodata_value)
-            {
-                heatmapImage.setPixel(pixelPosition, sf::Color::Transparent);
-            }
-            else
-            {
-                const double  normalized = (denominator != 0.0) ? (value - minVal) / denominator : 0.0;
-                const uint8_t gray       = static_cast<std::uint8_t>(std::clamp(normalized, 0.0, 1.0) * 255.0);
-
-                heatmapImage.setPixel(pixelPosition, sf::Color(gray, gray, gray));
-            }
+            throw std::runtime_error("Failed to resize heatmap texture");
         }
     }
 
-    if (!m_heatmapTexture.loadFromImage(heatmapImage))
-    {
-        throw std::runtime_error("Failed to load heatmap image into texture.");
-    }
+    GLuint handle = m_heatmapTexture.getNativeHandle();
+    glBindTexture(GL_TEXTURE_2D, handle);
+
+    // Upload the float data. GL_R32F is the internal format for a single 32bit float channel.
+    // Reference at https://registry.khronos.org/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, header.ncols, header.nrows, 0, GL_RED, GL_FLOAT, floatData.data());
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     m_heatmapSprite.setTexture(m_heatmapTexture, true);
+}
+
+void Heatmap::setAutoClamp(bool enabled)
+{
+    m_isAutoClamping = enabled;
+
+    // When auto clamping is off revert to previous manual values
+    if (!enabled)
+    {
+        m_currentClampMin = m_manualClampMin;
+        m_currentClampMax = m_manualClampMax;
+    }
+    else
+    {
+        // TODO: Placeholder for now
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+    }
+}
+
+void Heatmap::setManualClampRange(float min, float max)
+{
+    constexpr float minGap = 1.0f;
+
+    // Ensure min is never greater than (max - minGap) otherwise the shader will start flickering
+    if (min > max - minGap)
+    {
+        min = max - minGap;
+    }
+
+    m_manualClampMin = min;
+    m_manualClampMax = max;
+
+    if (!m_isAutoClamping)
+    {
+        m_currentClampMin = m_manualClampMin;
+        m_currentClampMax = m_manualClampMax;
+    }
+}
+
+// TODO: Placeholder
+void Heatmap::calculateAutoClamp(const sf::View& view)
+{
+    if (!m_ascData || !m_isAutoClamping)
+    {
+        return;
+    }
+
+    m_currentClampMin = m_globalMin;
+    m_currentClampMax = m_globalMax;
 }
