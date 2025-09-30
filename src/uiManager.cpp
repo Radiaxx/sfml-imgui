@@ -54,10 +54,13 @@ void UIManager::update(Heatmap& heatmap)
     {
         ImGui::Text("File Information:");
 
-        const auto& header = heatmap.getAscData()->getHeader();
+        const auto& header         = heatmap.getAscData()->getHeader();
+        const auto  globalMinValue = heatmap.getAscData()->getMinValue();
+        const auto  globalMaxValue = heatmap.getAscData()->getMaxValue();
+
         ImGui::Text("  - Dimensions: %d x %d", header.ncols, header.nrows);
         ImGui::Text("  - Cell Size: %.3f", header.cellsize);
-        ImGui::Text("  - Min/Max: %.3f / %.3f", heatmap.getAscData()->getMinValue(), heatmap.getAscData()->getMaxValue());
+        ImGui::Text("  - Min/Max: %.3f / %.3f", globalMinValue, globalMaxValue);
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -85,6 +88,16 @@ void UIManager::update(Heatmap& heatmap)
 
         if (minVal != heatmap.getManualClampMin() || maxVal != heatmap.getManualClampMax())
         {
+            if (minVal < globalMinValue)
+            {
+                minVal = globalMinValue;
+            }
+
+            if (maxVal > globalMaxValue)
+            {
+                maxVal = globalMaxValue;
+            }
+
             heatmap.setManualClampRange(minVal, maxVal);
         }
 

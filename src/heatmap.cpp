@@ -28,6 +28,16 @@ Heatmap::~Heatmap()
     }
 }
 
+void Heatmap::update(const sf::View& view)
+{
+    if (!m_ascData)
+    {
+        return;
+    }
+
+    calculateAutoClamp(view);
+}
+
 void Heatmap::loadData(int fileIndex)
 {
     if (fileIndex < 0 || fileIndex >= m_dataFiles.size())
@@ -227,12 +237,6 @@ void Heatmap::setAutoClamp(bool enabled)
         m_currentClampMin = m_manualClampMin;
         m_currentClampMax = m_manualClampMax;
     }
-    else
-    {
-        // TODO: Placeholder for now
-        m_currentClampMin = m_globalMin;
-        m_currentClampMax = m_globalMax;
-    }
 }
 
 void Heatmap::setManualClampRange(float min, float max)
@@ -255,7 +259,6 @@ void Heatmap::setManualClampRange(float min, float max)
     }
 }
 
-// TODO: Placeholder
 void Heatmap::calculateAutoClamp(const sf::View& view)
 {
     if (!m_ascData || !m_isAutoClamping)
@@ -263,6 +266,118 @@ void Heatmap::calculateAutoClamp(const sf::View& view)
         return;
     }
 
-    m_currentClampMin = m_globalMin;
-    m_currentClampMax = m_globalMax;
+    const sf::Vector2f  viewCenter = view.getCenter();
+    const sf::Vector2f  viewSize   = view.getSize();
+    const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
+    const sf::FloatRect spriteRect = m_heatmapSprite.getGlobalBounds();
+
+    // AABB Intersection between viewRect and spriteRect (world coords)
+    const sf::Vector2f aMin = spriteRect.position;
+    const sf::Vector2f aMax = spriteRect.position + spriteRect.size;
+    const sf::Vector2f bMin = viewRect.position;
+    const sf::Vector2f bMax = viewRect.position + viewRect.size;
+
+    sf::Vector2f intersectionMin{std::max(aMin.x, bMin.x), std::max(aMin.y, bMin.y)};
+    sf::Vector2f intersectionMax{std::min(aMax.x, bMax.x), std::min(aMax.y, bMax.y)};
+
+    // No overlap so fall back to global clamp default behavior
+    if (intersectionMax.x <= intersectionMin.x || intersectionMax.y <= intersectionMin.y)
+    {
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+
+        return;
+    }
+
+    sf::FloatRect intersectionRect(intersectionMin, intersectionMax - intersectionMin);
+
+    // Get intersected (visible) sprite local coords (texture space)
+    const sf::Transform inv              = m_heatmapSprite.getInverseTransform();
+    const sf::Vector2f  topLeftLocal     = inv.transformPoint(intersectionRect.position);
+    const sf::Vector2f  bottomRightLocal = inv.transformPoint(intersectionRect.position + intersectionRect.size);
+
+    // TODO: Local coords might not be ordered if there is a negative scale. Assume that there will never be a negative scale
+    const float left   = topLeftLocal.x;
+    const float right  = bottomRightLocal.x;
+    const float top    = topLeftLocal.y;
+    const float bottom = bottomRightLocal.y;
+
+    const sf::Vector2u textureSize = m_heatmapTexture.getSize(); // ncols x nrows
+    const float        maxX        = static_cast<float>(textureSize.x);
+    const float        maxY        = static_cast<float>(textureSize.y);
+
+    if (right <= left || bottom <= top)
+    {
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+
+        return;
+    }
+
+    const auto& header = m_ascData->getHeader();
+    const int   ncols  = header.ncols;
+    const int   nrows  = header.nrows;
+
+    int startCol = std::max(0, static_cast<int>(std::floor(left)));
+    int endCol   = std::min(ncols, static_cast<int>(std::ceil(right)));
+    int startRow = std::max(0, static_cast<int>(std::floor(top)));
+    int endRow   = std::min(nrows, static_cast<int>(std::ceil(bottom)));
+
+    if (startCol >= endCol || startRow >= endRow)
+    {
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+        return;
+    }
+
+    const auto&  data   = m_ascData->getData();
+    const double nodata = header.nodata_value;
+
+    float localMin    = std::numeric_limits<float>::max();
+    float localMax    = std::numeric_limits<float>::lowest();
+    bool  hasAnyValue = false;
+
+    // Scan the visible cells to find local min/max
+    for (int r = startRow; r < endRow; ++r)
+    {
+        const std::size_t base = static_cast<std::size_t>(r) * ncols;
+
+        for (int c = startCol; c < endCol; ++c)
+        {
+            const double value = data[base + c];
+            if (value == nodata)
+            {
+                continue;
+            }
+
+            hasAnyValue            = true;
+            const float floatValue = static_cast<float>(value);
+
+            if (floatValue < localMin)
+            {
+                localMin = floatValue;
+            }
+
+            if (floatValue > localMax)
+            {
+                localMax = floatValue;
+            }
+        }
+    }
+
+    if (!hasAnyValue)
+    {
+        m_currentClampMin = m_globalMin;
+        m_currentClampMax = m_globalMax;
+
+        return;
+    }
+
+    if (localMax <= localMin)
+    {
+        localMax = localMin + std::numeric_limits<float>::epsilon();
+    }
+
+    m_currentClampMin = localMin;
+    m_currentClampMax = localMax;
 }

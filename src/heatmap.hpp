@@ -17,6 +17,8 @@ public:
     Heatmap();
     ~Heatmap();
 
+    void update(const sf::View& view);
+
     void loadData(int fileIndex);
     void setCurrentColormapID(int id);
     void updateHeatmapView(sf::View view);
