@@ -41,7 +41,9 @@ void Heatmap::update(const sf::View& view)
 void Heatmap::loadData(int fileIndex)
 {
     if (fileIndex < 0 || fileIndex >= m_dataFiles.size())
+    {
         return;
+    }
 
     m_selectedFileIndex         = fileIndex;
     const std::string& filename = m_dataFiles[m_selectedFileIndex];
@@ -327,6 +329,7 @@ void Heatmap::calculateAutoClamp(const sf::View& view)
     {
         m_currentClampMin = m_globalMin;
         m_currentClampMax = m_globalMax;
+
         return;
     }
 

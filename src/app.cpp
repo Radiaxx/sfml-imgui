@@ -70,6 +70,7 @@ void App::update(float deltaTime)
     ImGui::SFML::Update(m_window, sf::seconds(deltaTime));
     m_heatmap.update(m_window.getView());
     m_uiManager.update(m_heatmap);
+    m_gridOverlay.update(m_heatmap, m_window);
     m_cellTooltip.update(m_heatmap, m_window);
 }
 
