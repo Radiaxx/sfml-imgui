@@ -43,11 +43,13 @@ void App::handleEvents()
                           [this](const sf::Event::MouseWheelScrolled& event)
                           {
                               m_viewControls.handleMouseWheelScrolled(event, m_window);
+                              m_cellTooltip.handleMouseWheelScrolled(event);
                               ImGui::SFML::ProcessEvent(m_window, event);
                           },
                           [this](const sf::Event::MouseButtonPressed& event)
                           {
                               m_viewControls.handleMouseButtonPressed(event);
+                              m_cellTooltip.handleMouseButtonPressed(event, m_heatmap, m_window);
                               ImGui::SFML::ProcessEvent(m_window, event);
                           },
                           [this](const sf::Event::MouseButtonReleased& event)
@@ -68,6 +70,7 @@ void App::update(float deltaTime)
     ImGui::SFML::Update(m_window, sf::seconds(deltaTime));
     m_heatmap.update(m_window.getView());
     m_uiManager.update(m_heatmap);
+    m_cellTooltip.update(m_heatmap, m_window);
 }
 
 void App::render()

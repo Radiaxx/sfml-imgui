@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "cellTooltip.hpp"
 #include "heatmap.hpp"
 #include "uiManager.hpp"
 #include "viewControls.hpp"
@@ -34,6 +35,7 @@ private:
 
     Heatmap      m_heatmap;
     UIManager    m_uiManager;
+    CellTooltip  m_cellTooltip;
     ViewControls m_viewControls;
 
     void handleEvents();
