@@ -46,7 +46,9 @@ void CellTooltip::update(Heatmap& heatmap, sf::RenderWindow& window)
     const sf::Vector2i topLeftPixel     = window.mapCoordsToPixel(topLeftWorld, window.getView());
     const sf::Vector2i bottomRightPixel = window.mapCoordsToPixel(bottomRightWorld, window.getView());
 
-    ImGui::GetForegroundDrawList()->AddRect(topLeftPixel, bottomRightPixel, ImGui::GetColorU32(ImGuiCol_Text));
+    ImGui::GetBackgroundDrawList()->AddRect(ImVec2(topLeftPixel.x, topLeftPixel.y),
+                                            ImVec2(bottomRightPixel.x, bottomRightPixel.y),
+                                            ImGui::GetColorU32(ImGuiCol_Text));
 
     // Draw the tooltip near the mouse cursor
     const ImVec2 mouseIm = ImGui::GetMousePos();

@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <sstream>
 
 #include "gridOverlay.hpp"
 
@@ -89,20 +90,35 @@ void GridOverlay::update(Heatmap& heatmap, sf::RenderWindow& window)
         return;
     }
 
-    if (startCol >= endCol || startRow >= endRow)
-    {
-        return;
-    }
+    const VisibleGridRegion region{
+        startCol,
+        endCol,
+        startRow,
+        endRow,
+        left,
+        right,
+        top,
+        bottom,
+    };
 
+    drawGridLines(sprite, view, window, region);
+    drawGridValues(sprite, view, window, region, cellPixelWidth, data, header);
+}
+
+void GridOverlay::drawGridLines(const sf::Sprite&        sprite,
+                                const sf::View&          view,
+                                sf::RenderWindow&        window,
+                                const VisibleGridRegion& region)
+{
     ImDrawList* drawList = ImGui::GetBackgroundDrawList();
     const ImU32 color    = IM_COL32(0, 0, 0, 255);
 
     // Vertical lines on grid x. The column edges
-    for (int col = startCol; col <= endCol; ++col)
+    for (int col = region.startCol; col <= region.endCol; ++col)
     {
-        const sf::Vector2f worldTop     = sprite.getTransform().transformPoint({static_cast<float>(col), top});
-        const sf::Vector2f worldBottom  = sprite.getTransform().transformPoint({static_cast<float>(col), bottom});
-        const sf::Vector2i screenTop    = window.mapCoordsToPixel(worldTop, view);
+        const sf::Vector2f worldTop    = sprite.getTransform().transformPoint({static_cast<float>(col), region.top});
+        const sf::Vector2f worldBottom = sprite.getTransform().transformPoint({static_cast<float>(col), region.bottom});
+        const sf::Vector2i screenTop   = window.mapCoordsToPixel(worldTop, view);
         const sf::Vector2i screenBottom = window.mapCoordsToPixel(worldBottom, view);
 
         const ImVec2 start = ImVec2(static_cast<float>(screenTop.x), static_cast<float>(screenTop.y));
@@ -111,15 +127,89 @@ void GridOverlay::update(Heatmap& heatmap, sf::RenderWindow& window)
     }
 
     // Horizontal lines on grid y. The row edges
-    for (int row = startRow; row <= endRow; ++row)
+    for (int row = region.startRow; row <= region.endRow; ++row)
     {
-        const sf::Vector2f worldLeft   = sprite.getTransform().transformPoint({left, static_cast<float>(row)});
-        const sf::Vector2f worldRight  = sprite.getTransform().transformPoint({right, static_cast<float>(row)});
+        const sf::Vector2f worldLeft   = sprite.getTransform().transformPoint({region.left, static_cast<float>(row)});
+        const sf::Vector2f worldRight  = sprite.getTransform().transformPoint({region.right, static_cast<float>(row)});
         const sf::Vector2i screenLeft  = window.mapCoordsToPixel(worldLeft, view);
         const sf::Vector2i screenRight = window.mapCoordsToPixel(worldRight, view);
 
         const ImVec2 start = ImVec2(static_cast<float>(screenLeft.x), static_cast<float>(screenLeft.y));
         const ImVec2 end   = ImVec2(static_cast<float>(screenRight.x), static_cast<float>(screenRight.y));
         drawList->AddLine(start, end, color);
+    }
+}
+
+void GridOverlay::drawGridValues(
+    const sf::Sprite&                 sprite,
+    const sf::View&                   view,
+    sf::RenderWindow&                 window,
+    const VisibleGridRegion&          region,
+    const int                         cellSize,
+    const std::unique_ptr<AscParser>& data,
+    const AscParser::Header&          header)
+{
+    ImDrawList* dl   = ImGui::GetBackgroundDrawList();
+    ImFont*     font = ImGui::GetFont();
+
+    // Values to keep it readable. Currently eye balled
+    const float fontSize = 13.f;
+    int         decimals;
+
+    if (cellSize >= 95.f)
+    {
+        decimals = 3;
+    }
+    else if (cellSize >= 75.f)
+    {
+        decimals = 2;
+    }
+    else if (cellSize >= 55.f)
+    {
+        decimals = 1;
+    }
+    else
+    {
+        decimals = 0;
+    }
+
+    std::ostringstream oss;
+    oss.setf(std::ios::fixed);
+
+    // For each visible cell draw his value centered in the cell
+    for (int row = region.startRow; row < region.endRow; ++row)
+    {
+        for (int col = region.startCol; col < region.endCol; ++col)
+        {
+            const float value = data->getData().at(row * header.ncols + col);
+
+            if (value == header.nodata_value)
+            {
+                continue;
+            }
+
+            // Use the same stringstream to avoid per cell allocations
+            oss.str({});
+            oss.clear();
+            oss << std::setprecision(decimals) << value;
+            const std::string valueString = oss.str();
+
+            const sf::Vector2f localCenter(static_cast<float>(col) + 0.5f, static_cast<float>(row) + 0.5f);
+            const sf::Vector2f worldCenter  = sprite.getTransform().transformPoint(localCenter);
+            const sf::Vector2i screenCenter = window.mapCoordsToPixel(worldCenter, view);
+            const sf::Vector2f pos(static_cast<float>(screenCenter.x), static_cast<float>(screenCenter.y));
+
+            const ImVec2       textSizeImGui = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, valueString.c_str());
+            const sf::Vector2f textSize(textSizeImGui.x, textSizeImGui.y);
+            const sf::Vector2f anchor(std::round(pos.x - textSize.x * 0.5f), std::round(pos.y - textSize.y * 0.5f));
+            const ImVec2       anchorRounded(std::round(anchor.x), std::round(anchor.y));
+
+            const float  padding        = 2.f;
+            const ImVec2 bottomLeftRect = ImVec2(anchorRounded.x - padding, anchorRounded.y - padding);
+            const ImVec2 topRightRect = ImVec2(anchorRounded.x + textSize.x + padding, anchorRounded.y + textSize.y + padding);
+
+            dl->AddRectFilled(bottomLeftRect, topRightRect, ImGui::GetColorU32(ImGuiCol_WindowBg, 0.65f), 2.0f);
+            dl->AddText(font, fontSize, anchorRounded, ImGui::GetColorU32(ImGuiCol_Text, 1.f), valueString.c_str());
+        }
     }
 }
