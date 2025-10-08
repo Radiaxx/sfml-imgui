@@ -29,6 +29,9 @@ set(IMGUI_SFML_FIND_SFML OFF)
 set(IMGUI_SFML_IMGUI_DEMO ON)
 FetchContent_MakeAvailable(imgui-sfml)
 
-set(IMGUI_USER_CONFIG_PATH "${CMAKE_CURRENT_SOURCE_DIR}/config/imguiConfig.h")
-target_include_directories(ImGui-SFML PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/config")
-target_compile_definitions(ImGui-SFML PUBLIC IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\")
+set(IMGUI_CONFIG_PATH "${CMAKE_CURRENT_SOURCE_DIR}/config/imguiConfig.h")
+target_include_directories(ImGui-SFML INTERFACE
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../dependencies/config>
+    $<INSTALL_INTERFACE:include>
+)
+target_compile_definitions(ImGui-SFML PUBLIC IMGUI_CONFIG=\"${IMGUI_CONFIG_PATH}\")

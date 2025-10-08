@@ -9,7 +9,7 @@ set(DATA_PATH "${CMAKE_SOURCE_DIR}/data")
 set(SHADERS_PATH "${CMAKE_SOURCE_DIR}/shaders") 
 target_compile_definitions(sfml-imgui PRIVATE DATA_PATH="${DATA_PATH}" SHADERS_PATH="${SHADERS_PATH}")
 target_compile_definitions(sfml-imgui PRIVATE
-  IMGUI_USER_CONFIG=\"${IMGUI_USER_CONFIG_PATH}\"
+  IMGUI_CONFIG=\"${IMGUI_CONFIG_PATH}\"
 )
     
 target_include_directories(sfml-imgui PUBLIC
