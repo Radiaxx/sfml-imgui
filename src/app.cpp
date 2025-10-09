@@ -68,15 +68,14 @@ void App::handleEvents()
 void App::update(float deltaTime)
 {
     ImGui::SFML::Update(m_window, sf::seconds(deltaTime));
-    m_heatmap.update(m_window.getView());
-    m_uiManager.update(m_heatmap);
-    m_gridOverlay.update(m_heatmap, m_window);
-    m_cellTooltip.update(m_heatmap, m_window);
 }
 
 void App::render()
 {
     m_window.clear(sf::Color::Black);
+
+    m_heatmap.draw(m_window.getView());
+    m_uiManager.draw(m_heatmap, m_gridOverlay);
 
     if (m_heatmap.getAscData())
     {
@@ -84,6 +83,9 @@ void App::render()
         m_heatmap.getHeatmapShader().setUniform("uClampMax", m_heatmap.getCurrentClampMax());
         m_window.draw(m_heatmap.getHeatmapSprite(), &m_heatmap.getHeatmapShader());
     }
+
+    m_gridOverlay.draw(m_heatmap, m_window);
+    m_cellTooltip.draw(m_heatmap, m_window);
 
     ImGui::SFML::Render(m_window);
     m_window.display();

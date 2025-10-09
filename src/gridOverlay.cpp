@@ -6,7 +6,7 @@
 const float GRID_MIN_PX = 30.f;
 
 // Draw an overlay on top of the heatmap when cell size is >= 30x30 pixels
-void GridOverlay::update(Heatmap& heatmap, sf::RenderWindow& window)
+void GridOverlay::draw(Heatmap& heatmap, sf::RenderWindow& window)
 {
     const auto& data = heatmap.getAscData();
 
@@ -105,6 +105,16 @@ void GridOverlay::update(Heatmap& heatmap, sf::RenderWindow& window)
     drawGridValues(sprite, view, window, region, cellPixelWidth, data, header);
 }
 
+void GridOverlay::setShowValues(bool enabled)
+{
+    m_isShowingValues = enabled;
+}
+
+bool GridOverlay::isShowingValues() const
+{
+    return m_isShowingValues;
+}
+
 void GridOverlay::drawGridLines(const sf::Sprite&        sprite,
                                 const sf::View&          view,
                                 sf::RenderWindow&        window,
@@ -149,12 +159,18 @@ void GridOverlay::drawGridValues(
     const std::unique_ptr<AscParser>& data,
     const AscParser::Header&          header)
 {
-    ImDrawList* dl   = ImGui::GetBackgroundDrawList();
-    ImFont*     font = ImGui::GetFont();
+    if (!m_isShowingValues)
+    {
+        return;
+    }
+
+    ImDrawList* dl      = ImGui::GetBackgroundDrawList();
+    ImFont*     font    = ImGui::GetFont();
+    const float padding = 2.f;
 
     // Values to keep it readable. Currently eye balled
-    const float fontSize = 13.f;
-    int         decimals;
+    const int fontSize = 13;
+    int       decimals;
 
     if (cellSize >= 95.f)
     {
@@ -204,7 +220,6 @@ void GridOverlay::drawGridValues(
             const sf::Vector2f anchor(std::round(pos.x - textSize.x * 0.5f), std::round(pos.y - textSize.y * 0.5f));
             const ImVec2       anchorRounded(std::round(anchor.x), std::round(anchor.y));
 
-            const float  padding        = 2.f;
             const ImVec2 bottomLeftRect = ImVec2(anchorRounded.x - padding, anchorRounded.y - padding);
             const ImVec2 topRightRect = ImVec2(anchorRounded.x + textSize.x + padding, anchorRounded.y + textSize.y + padding);
 

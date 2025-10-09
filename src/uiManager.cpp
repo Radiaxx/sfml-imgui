@@ -1,7 +1,7 @@
 #include "uiManager.hpp"
 #include <imgui.h>
 
-void UIManager::update(Heatmap& heatmap)
+void UIManager::draw(Heatmap& heatmap, GridOverlay& gridOverlay)
 {
     const float          initialWidth = 350.0f;
     const ImGuiViewport* viewport     = ImGui::GetMainViewport();
@@ -66,10 +66,16 @@ void UIManager::update(Heatmap& heatmap)
         ImGui::Separator();
         ImGui::Spacing();
 
-        ImGui::Text("Value Clamping:");
+        ImGui::Text("Settings:");
+
+        bool showValues = gridOverlay.isShowingValues();
+        if (ImGui::Checkbox("Show Values", &showValues))
+        {
+            gridOverlay.setShowValues(showValues);
+        }
 
         bool isAuto = heatmap.isAutoClamping();
-        if (ImGui::Checkbox("Auto clamp to View", &isAuto))
+        if (ImGui::Checkbox("Auto clamp min/max to View", &isAuto))
         {
             heatmap.setAutoClamp(isAuto);
         }

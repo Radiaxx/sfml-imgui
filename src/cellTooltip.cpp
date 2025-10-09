@@ -4,7 +4,7 @@
 
 const ImVec2 TOOLTIP_OFFSET(14.f, 18.f);
 
-void CellTooltip::update(Heatmap& heatmap, sf::RenderWindow& window)
+void CellTooltip::draw(Heatmap& heatmap, sf::RenderWindow& window)
 {
     if (!m_isVisible || !heatmap.getAscData())
     {

@@ -16,7 +16,7 @@ public:
         bool   hasValue = false;
     };
 
-    void update(Heatmap& heatmap, sf::RenderWindow& window);
+    void draw(Heatmap& heatmap, sf::RenderWindow& window);
 
     void handleMouseWheelScrolled(const sf::Event::MouseWheelScrolled& event);
     void handleMouseButtonPressed(const sf::Event::MouseButtonPressed& event, Heatmap& heatmap, sf::RenderWindow& window);

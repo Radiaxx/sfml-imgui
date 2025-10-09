@@ -1,6 +1,7 @@
 #ifndef UI_MANAGER_HPP
 #define UI_MANAGER_HPP
 
+#include "gridOverlay.hpp"
 #include "heatmap.hpp"
 
 class UIManager
@@ -8,7 +9,7 @@ class UIManager
 public:
     UIManager(sf::View view) : m_view(view) {};
 
-    void update(Heatmap& heatmap);
+    void draw(Heatmap& heatmap, GridOverlay& gridOverlay);
 
     void setView(sf::View view);
 

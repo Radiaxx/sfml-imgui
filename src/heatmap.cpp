@@ -28,7 +28,7 @@ Heatmap::~Heatmap()
     }
 }
 
-void Heatmap::update(const sf::View& view)
+void Heatmap::draw(const sf::View& view)
 {
     if (!m_ascData)
     {

@@ -8,7 +8,10 @@
 class GridOverlay
 {
 public:
-    void update(Heatmap& heatmap, sf::RenderWindow& window);
+    void draw(Heatmap& heatmap, sf::RenderWindow& window);
+
+    void setShowValues(bool enabled);
+    bool isShowingValues() const;
 
 private:
     struct VisibleGridRegion
@@ -22,6 +25,8 @@ private:
         float top;
         float bottom;
     };
+
+    bool m_isShowingValues = false;
 
     void drawGridLines(const sf::Sprite& sprite, const sf::View& view, sf::RenderWindow& window, const VisibleGridRegion& region);
     void drawGridValues(const sf::Sprite&                 sprite,
