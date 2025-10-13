@@ -1,11 +1,9 @@
-#version 130
+#version 120
 
 uniform sampler2D uFloatTexture;
 uniform float uClampMin;
 uniform float uClampMax;
 uniform int uColormapID;
-
-out vec4 fragColor;
 
 const int JET_STOPS = 5;
 const int TURBO_STOPS = 256;
@@ -1846,25 +1844,24 @@ vec4 colormapGrayscale(float v) {
 }
 
 vec3 getColorAtIndex(int colormapID, int index) {
-    switch (colormapID) {
-        case 2:
-            return JET_COLORS[index];
-        case 3:
-            return TURBO_COLORS[index];
-        case 4:
-            return VIRIDIS_COLORS[index];
-        case 5:
-            return PLASMA_COLORS[index];
-        case 6:
-            return INFERNO_COLORS[index];
-        case 7:
-            return MAGMA_COLORS[index];
-        case 8:
-            return GIST_EARTH_COLORS[index];
-        case 9:
-            return TERRAIN_COLORS[index];
-        default:
-            return vec3(0.0, 0.0, 0.0);
+    if (colormapID == 2) {
+        return JET_COLORS[index];
+    } else if (colormapID == 3) {
+        return TURBO_COLORS[index];
+    } else if (colormapID == 4) {
+        return VIRIDIS_COLORS[index];
+    } else if (colormapID == 5) {
+        return PLASMA_COLORS[index];
+    } else if (colormapID == 6) {
+        return INFERNO_COLORS[index];
+    } else if (colormapID == 7) {
+        return MAGMA_COLORS[index];
+    } else if (colormapID == 8) {
+        return GIST_EARTH_COLORS[index];
+    } else if (colormapID == 9) {
+        return TERRAIN_COLORS[index];
+    } else {
+        return vec3(0.0, 0.0, 0.0);
     }
 }
 
@@ -1892,44 +1889,32 @@ void main()
 {
     // Get the normalized scalar value (0.0 to 1.0) from the red channel (any channel could be used) of our texture
     // gl_TexCoord[0].xy contains the texture coordinates for the current pixel (we are in a fragment shader)
-    float rawValue = texture(uFloatTexture, gl_TexCoord[0].xy).r;
+    float rawValue = texture2D(uFloatTexture, gl_TexCoord[0].xy).r;
     float range = uClampMax - uClampMin;
     float normalizedValue = (range > 0.0) ? (rawValue - uClampMin) / range : 0.0;
     float v = clamp(normalizedValue, 0.0, 1.0);
 
-    switch (uColormapID) {
-        case 0:
-            fragColor = colormapBlueToRed(v);
-            break;
-        case 1:
-            fragColor = colormapGrayscale(v);
-            break;
-        case 2: // Jet
-            fragColor = sampleColormap(v, 2, JET_STOPS);
-            break;
-        case 3: // Turbo
-            fragColor = sampleColormap(v, 3, TURBO_STOPS);
-            break;
-        case 4: // Viridis
-            fragColor = sampleColormap(v, 4, VIRIDIS_STOPS);
-            break;
-        case 5: // Plasma
-            fragColor = sampleColormap(v, 5, PLASMA_STOPS);
-            break;
-        case 6: // Inferno
-            fragColor = sampleColormap(v, 6, INFERNO_STOPS);
-            break;
-        case 7: // Magma
-            fragColor = sampleColormap(v, 7, MAGMA_STOPS);
-            break;
-        case 8: // Gist Earth
-            fragColor = sampleColormap(v, 8, GIST_EARTH_STOPS);
-            break;
-        case 9: // Terrain
-            fragColor = sampleColormap(v, 9, TERRAIN_STOPS);
-            break;
-        default:
-            fragColor = vec4(0.0, 0.0, 0.0, 1.0);
-            break;
+    if (uColormapID == 0) {
+        gl_FragColor = colormapBlueToRed(v);
+    } else if (uColormapID == 1) {
+        gl_FragColor = colormapGrayscale(v);
+    } else if (uColormapID == 2) { // Jet
+        gl_FragColor = sampleColormap(v, 2, JET_STOPS);
+    } else if (uColormapID == 3) { // Turbo
+        gl_FragColor = sampleColormap(v, 3, TURBO_STOPS);
+    } else if (uColormapID == 4) { // Viridis
+        gl_FragColor = sampleColormap(v, 4, VIRIDIS_STOPS);
+    } else if (uColormapID == 5) { // Plasma
+        gl_FragColor = sampleColormap(v, 5, PLASMA_STOPS);
+    } else if (uColormapID == 6) { // Inferno
+        gl_FragColor = sampleColormap(v, 6, INFERNO_STOPS);
+    } else if (uColormapID == 7) { // Magma
+        gl_FragColor = sampleColormap(v, 7, MAGMA_STOPS);
+    } else if (uColormapID == 8) { // Gist Earth
+        gl_FragColor = sampleColormap(v, 8, GIST_EARTH_STOPS);
+    } else if (uColormapID == 9) { // Terrain
+        gl_FragColor = sampleColormap(v, 9, TERRAIN_STOPS);
+    } else {
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
     }
 }

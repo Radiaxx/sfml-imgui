@@ -13,13 +13,21 @@ void ViewControls::handleMouseWheelScrolled(const sf::Event::MouseWheelScrolled&
         return;
     }
 
+    // Ignore zero delta events (ONLY macOS sends these)
+    if (event.delta == 0.0f)
+    {
+        return;
+    }
+
     sf::View view = window.getView();
 
     // Zoom at the cursor position
     sf::Vector2i mousePixelPos      = {event.position.x, event.position.y};
     sf::Vector2f worldPosBeforeZoom = window.mapPixelToCoords(mousePixelPos, view);
 
-    const float zoomFactor = (event.delta > 0) ? 0.9f : 1.1f;
+    const float zoomSpeed  = 1.1f;
+    const float zoomFactor = (event.delta > 0) ? (1.0f / zoomSpeed) : zoomSpeed;
+
     view.zoom(zoomFactor);
 
     sf::Vector2f worldPosAfterZoom = window.mapPixelToCoords(mousePixelPos, view);
