@@ -188,9 +188,11 @@ void Heatmap::scanDataDirectory()
                 m_dataFiles.push_back(entry.path().filename().string());
             }
         }
+
+        std::sort(m_dataFiles.begin(), m_dataFiles.end());
     } catch (const std::filesystem::filesystem_error& e)
     {
-        std::cerr << "Error scanning directory: " << e.what() << std::endl;
+        std::cerr << "Heatmap - error scanning directory: " << e.what() << std::endl;
         throw;
     }
 }

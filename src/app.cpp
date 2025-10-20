@@ -75,7 +75,7 @@ void App::render()
     m_window.clear(sf::Color::Black);
 
     m_heatmap.draw(m_window.getView());
-    m_uiManager.draw(m_heatmap, m_gridOverlay);
+    m_uiManager.draw(m_heatmap, m_geoData, m_gridOverlay);
 
     if (m_heatmap.getAscData())
     {

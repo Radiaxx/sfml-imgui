@@ -1,7 +1,7 @@
 #include "uiManager.hpp"
 #include <imgui.h>
 
-void UIManager::draw(Heatmap& heatmap, GridOverlay& gridOverlay)
+void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverlay)
 {
     const float          initialWidth = 350.0f;
     const ImGuiViewport* viewport     = ImGui::GetMainViewport();
@@ -150,6 +150,96 @@ void UIManager::draw(Heatmap& heatmap, GridOverlay& gridOverlay)
         }
 
         ImGui::EndCombo();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    // Display geo data selection
+    ImGui::Text("Geo Data Selection");
+
+    const auto& geoFiles             = geoData.getGeoFiles();
+    int         selectedGeoFileIndex = geoData.getSelectedFileIndex();
+    const char* geo_combo_preview    = (selectedGeoFileIndex >= 0) ? geoFiles[selectedGeoFileIndex].c_str()
+                                                                   : "Select a geo data file...";
+
+    if (ImGui::BeginCombo("Geo Data", geo_combo_preview))
+    {
+        for (int i = 0; i < static_cast<int>(geoFiles.size()); ++i)
+        {
+            const bool is_selected = (selectedGeoFileIndex == i);
+
+            if (ImGui::Selectable(geoFiles[i].c_str(), is_selected))
+            {
+                if (selectedGeoFileIndex != i)
+                {
+                    geoData.loadData(i);
+                }
+            }
+
+            if (is_selected)
+            {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    // Display geo data info and category toggles (no rendering yet)
+    if (geoData.getGeoData())
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::Text("Geo Data Info:");
+        ImGui::Text("  - Entities: %zu", geoData.getGeoData()->getEntities().size());
+        ImGui::Text("  - Life Range: %.3f / %.3f", geoData.getLifeMin(), geoData.getLifeMax());
+
+        ImGui::Spacing();
+        ImGui::Text("Categories:");
+        bool value;
+
+        value = geoData.getShowMaxima();
+        if (ImGui::Checkbox(("Maxima (" + std::to_string(geoData.maxima().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowMaxima(value);
+        }
+
+        value = geoData.getShowMinima();
+        if (ImGui::Checkbox(("Minima (" + std::to_string(geoData.minima().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowMinima(value);
+        }
+
+        value = geoData.getShowSaddles();
+        if (ImGui::Checkbox(("Saddles (" + std::to_string(geoData.saddles().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowSaddles(value);
+        }
+
+        value = geoData.getShowLinesAscending();
+        if (ImGui::Checkbox(("Lines Asc (" + std::to_string(geoData.linesAscending().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowLinesAscending(value);
+        }
+
+        value = geoData.getShowLinesDescending();
+        if (ImGui::Checkbox(("Lines Desc (" + std::to_string(geoData.linesDescending().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowLinesDescending(value);
+        }
+
+        value = geoData.getShowAreas();
+        if (ImGui::Checkbox(("Areas (" + std::to_string(geoData.areas().size()) + ")").c_str(), &value))
+        {
+            geoData.setShowAreas(value);
+        }
+    }
+    else
+    {
+        ImGui::TextDisabled("Load geo data to enable categories.");
     }
 
     ImGui::End();

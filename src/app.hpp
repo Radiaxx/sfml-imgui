@@ -35,6 +35,7 @@ private:
     sf::Clock        m_clock;
 
     Heatmap      m_heatmap;
+    GeoData      m_geoData;
     UIManager    m_uiManager;
     CellTooltip  m_cellTooltip;
     GridOverlay  m_gridOverlay;
