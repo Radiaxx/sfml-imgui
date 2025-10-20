@@ -1,12 +1,26 @@
-#include "uiManager.hpp"
 #include <imgui.h>
+
+#include "geoData.hpp"
+#include "uiManager.hpp"
+
+static ImVec4 toImVec4FromColor(sf::Color color)
+{
+    return ImVec4(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+}
+
+static sf::Color fromImVec4ToColor(const ImVec4& vec)
+{
+    auto toU8 = [](float x) -> std::uint8_t { return static_cast<std::uint8_t>(std::roundf(x * 255.0f)); };
+
+    return sf::Color(toU8(vec.x), toU8(vec.y), toU8(vec.z), toU8(vec.w));
+}
 
 void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverlay)
 {
-    const float          initialWidth = 350.0f;
+    const float          initialWidth = 380.0f;
     const ImGuiViewport* viewport     = ImGui::GetMainViewport();
     ImVec2               window_pos(viewport->WorkPos.x + viewport->WorkSize.x, viewport->WorkPos.y);
-    ImVec2               window_pos_pivot(1.0f, 0.0f); // Pivot to top right
+    ImVec2               window_pos_pivot(1.0f, 0.0f);
 
     ImGui::SetNextWindowPos(window_pos, ImGuiCond_None, window_pos_pivot);
     ImGui::SetNextWindowSize(ImVec2(initialWidth, 0.0f), ImGuiCond_None);
@@ -14,16 +28,14 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverla
 
     ImGui::Begin("Control Panel");
 
-    // File selection dropdown
     ImGui::Text("Dataset Selection");
-
     const auto& dataFiles         = heatmap.getDataFiles();
     int         selectedFileIndex = heatmap.getSelectedFileIndex();
     const char* combo_preview_value = (selectedFileIndex >= 0) ? dataFiles[selectedFileIndex].c_str() : "Select a file...";
 
     if (ImGui::BeginCombo("Dataset", combo_preview_value))
     {
-        for (int i = 0; i < dataFiles.size(); ++i)
+        for (int i = 0; i < static_cast<int>(dataFiles.size()); ++i)
         {
             const bool is_selected = (selectedFileIndex == i);
 
@@ -186,9 +198,10 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverla
         ImGui::EndCombo();
     }
 
-    // Display geo data info and category toggles (no rendering yet)
+    // Display geo data info and category toggles
     if (geoData.getGeoData())
     {
+        // Display loaded geo data info
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -197,50 +210,235 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverla
         ImGui::Text("  - Entities: %zu", geoData.getGeoData()->getEntities().size());
         ImGui::Text("  - Life Range: %.3f / %.3f", geoData.getLifeMin(), geoData.getLifeMax());
 
+        // Display life filter
+        float lifeMin = static_cast<float>(geoData.getLifeFilterMin());
+        float lifeMax = static_cast<float>(geoData.getLifeFilterMax());
+        ImGui::Text("Filter by life:");
+        if (ImGui::DragFloatRange2("life range",
+                                   &lifeMin,
+                                   &lifeMax,
+                                   1.0f,
+                                   static_cast<float>(geoData.getLifeMin()),
+                                   static_cast<float>(geoData.getLifeMax())))
+        {
+            geoData.setLifeFilterRange(lifeMin, lifeMax);
+        }
+
+        // Display mode (lines or areas)
         ImGui::Spacing();
-        ImGui::Text("Categories:");
-        bool value;
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Text("Display Mode:");
 
-        value = geoData.getShowMaxima();
-        if (ImGui::Checkbox(("Maxima (" + std::to_string(geoData.maxima().size()) + ")").c_str(), &value))
+        int displayMode = (geoData.getDisplayMode() == GeoData::DisplayMode::Lines) ? 0 : 1;
+        if (ImGui::RadioButton("Lines", displayMode == 0))
         {
-            geoData.setShowMaxima(value);
+            displayMode = 0;
+            geoData.setDisplayMode(GeoData::DisplayMode::Lines);
         }
 
-        value = geoData.getShowMinima();
-        if (ImGui::Checkbox(("Minima (" + std::to_string(geoData.minima().size()) + ")").c_str(), &value))
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Areas", displayMode == 1))
         {
-            geoData.setShowMinima(value);
+            displayMode = 1;
+            geoData.setDisplayMode(GeoData::DisplayMode::Areas);
         }
 
-        value = geoData.getShowSaddles();
-        if (ImGui::Checkbox(("Saddles (" + std::to_string(geoData.saddles().size()) + ")").c_str(), &value))
+        // Entity toggles
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Text("Entity Selection");
+
+        // Points
+        ImGui::Text("Points");
+        bool isMaximumVisible = geoData.getShowMaximum();
+        bool isMinimumVisible = geoData.getShowMinimum();
+        bool isSaddlesVisible = geoData.getShowSaddles();
+
+        bool allPoints = (isMaximumVisible && isMinimumVisible && isSaddlesVisible);
+        if (ImGui::Checkbox("All points", &allPoints))
         {
-            geoData.setShowSaddles(value);
+            geoData.setShowMaximum(allPoints);
+            geoData.setShowMinimum(allPoints);
+            geoData.setShowSaddles(allPoints);
+            isMaximumVisible = isMinimumVisible = isSaddlesVisible = allPoints;
         }
 
-        value = geoData.getShowLinesAscending();
-        if (ImGui::Checkbox(("Lines Asc (" + std::to_string(geoData.linesAscending().size()) + ")").c_str(), &value))
+        const std::string maximumCheckBoxText = std::string("Maximum (") + std::to_string(geoData.maximumInRange().size()) +
+                                                " / " + std::to_string(geoData.maximum().size()) + ")";
+
+        if (ImGui::Checkbox(maximumCheckBoxText.c_str(), &isMaximumVisible))
         {
-            geoData.setShowLinesAscending(value);
+            geoData.setShowMaximum(isMaximumVisible);
         }
 
-        value = geoData.getShowLinesDescending();
-        if (ImGui::Checkbox(("Lines Desc (" + std::to_string(geoData.linesDescending().size()) + ")").c_str(), &value))
+        const std::string minimumCheckBoxText = std::string("Minimum (") + std::to_string(geoData.minimumInRange().size()) +
+                                                " / " + std::to_string(geoData.minimum().size()) + ")";
+
+        if (ImGui::Checkbox(minimumCheckBoxText.c_str(), &isMinimumVisible))
         {
-            geoData.setShowLinesDescending(value);
+            geoData.setShowMinimum(isMinimumVisible);
         }
 
-        value = geoData.getShowAreas();
-        if (ImGui::Checkbox(("Areas (" + std::to_string(geoData.areas().size()) + ")").c_str(), &value))
+        const std::string saddlesCheckBoxText = std::string("Saddle (") + std::to_string(geoData.saddlesInRange().size()) +
+                                                " / " + std::to_string(geoData.saddles().size()) + ")";
+
+        if (ImGui::Checkbox(saddlesCheckBoxText.c_str(), &isSaddlesVisible))
         {
-            geoData.setShowAreas(value);
+            geoData.setShowSaddles(isSaddlesVisible);
         }
+
+        // Lines (disabled if Areas mode)
+        const bool linesDisabled = (geoData.getDisplayMode() == GeoData::DisplayMode::Areas);
+        if (linesDisabled)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::Spacing();
+        ImGui::Text("Lines");
+        bool isLinesAscending  = geoData.getShowLinesAscending();
+        bool isLinesDescending = geoData.getShowLinesDescending();
+
+        const std::string ascCheckBoxText = std::string("Ascending (") +
+                                            std::to_string(geoData.linesAscendingInRange().size()) + " / " +
+                                            std::to_string(geoData.linesAscending().size()) + ")";
+
+        if (ImGui::Checkbox(ascCheckBoxText.c_str(), &isLinesAscending))
+        {
+            geoData.setShowLinesAscending(isLinesAscending);
+        }
+
+        const std::string descCheckBoxText = std::string("Descending (") +
+                                             std::to_string(geoData.linesDescendingInRange().size()) + " / " +
+                                             std::to_string(geoData.linesDescending().size()) + ")";
+
+        if (ImGui::Checkbox(descCheckBoxText.c_str(), &isLinesDescending))
+        {
+            geoData.setShowLinesDescending(isLinesDescending);
+        }
+
+        if (linesDisabled)
+        {
+            ImGui::EndDisabled();
+        }
+
+        // Areas (disabled if Lines mode)
+        const bool areasDisabled = (geoData.getDisplayMode() == GeoData::DisplayMode::Lines);
+        if (areasDisabled)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        ImGui::Spacing();
+        ImGui::Text("Areas");
+
+        bool              showAreas         = geoData.getShowAreas();
+        const std::string areasCheckBoxText = std::string("Areas (") + std::to_string(geoData.areasInRange().size()) +
+                                              " / " + std::to_string(geoData.areas().size()) + ")";
+
+        if (ImGui::Checkbox(areasCheckBoxText.c_str(), &showAreas))
+        {
+            geoData.setShowAreas(showAreas);
+        }
+
+        if (areasDisabled)
+        {
+            ImGui::EndDisabled();
+        }
+
+        // Display colors
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Text("Colors");
+
+        ImVec4 maximumColor = toImVec4FromColor(geoData.getMaximumColor());
+        if (ImGui::ColorEdit4("Maximum", &maximumColor.x))
+        {
+            geoData.setMaximumColor(fromImVec4ToColor(maximumColor));
+        }
+
+        ImVec4 minimumColor = toImVec4FromColor(geoData.getMinimumColor());
+        if (ImGui::ColorEdit4("Minimum", &minimumColor.x))
+        {
+            geoData.setMinimumColor(fromImVec4ToColor(minimumColor));
+        }
+
+        ImVec4 saddlesColor = toImVec4FromColor(geoData.getSaddlesColor());
+        if (ImGui::ColorEdit4("Saddles", &saddlesColor.x))
+        {
+            geoData.setSaddlesColor(fromImVec4ToColor(saddlesColor));
+        }
+
+        ImVec4 lineAscColor = toImVec4FromColor(geoData.getLineAscColor());
+        if (ImGui::ColorEdit4("Line Ascending", &lineAscColor.x))
+        {
+            geoData.setLineAscColor(fromImVec4ToColor(lineAscColor));
+        }
+
+        ImVec4 lineDescColor = toImVec4FromColor(geoData.getLineDescColor());
+        if (ImGui::ColorEdit4("Line Descending", &lineDescColor.x))
+        {
+            geoData.setLineDescColor(fromImVec4ToColor(lineDescColor));
+        }
+
+        ImVec4 areasColor = toImVec4FromColor(geoData.getAreasColor());
+        if (ImGui::ColorEdit4("Areas", &areasColor.x))
+        {
+            geoData.setAreasColor(fromImVec4ToColor(areasColor));
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Text("Points Scaling");
+
+        // Points: size scaling toggle + ranges
+        bool pointSizeScale = geoData.getPointSizeScaleByLife();
+        if (ImGui::Checkbox("Scale marker size by life", &pointSizeScale))
+        {
+            geoData.setPointSizeScaleByLife(pointSizeScale);
+        }
+
+        float pointSizeBase = geoData.getPointSizeBase();
+        if (ImGui::DragFloat("Base size", &pointSizeBase, 0.1f, 1.0f, 64.0f))
+        {
+            geoData.setPointSizeBase(pointSizeBase);
+        }
+
+        float pointSizeMin = geoData.getPointSizeMin();
+        float pointSizeMax = geoData.getPointSizeMax();
+        if (ImGui::DragFloatRange2("Size range", &pointSizeMin, &pointSizeMax, 0.1f, 1.0f, 64.0f))
+        {
+            geoData.setPointSizeRange(pointSizeMin, pointSizeMax);
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::Text("Lines/Areas Scaling");
+
+        // Lines/Areas: choose color route (brightness). One toggle applies to whichever is visible now.
+        bool isLineColorScaledByLife = geoData.getLineColorScaleByLife();
+        if (ImGui::Checkbox("Scale color BRIGHTNESS by life", &isLineColorScaledByLife))
+        {
+            geoData.setLineColorScaleByLife(isLineColorScaledByLife);
+        }
+
+        // TODO: Choose if use thick lines or mono pixel ones
+        // float defaultLineThickness = geoData.getLineThicknessBase();
+        // if (ImGui::DragFloat("Base Thickness", &defaultLineThickness, 1.0f, 1.0f, 32.0f))
+        // {
+        //     geoData.setLineThicknessBase(defaultLineThickness);
+        // }
     }
     else
     {
-        ImGui::TextDisabled("Load geo data to enable categories.");
+        ImGui::TextDisabled("Load geo data to enable controls below.");
     }
+
 
     ImGui::End();
 }
