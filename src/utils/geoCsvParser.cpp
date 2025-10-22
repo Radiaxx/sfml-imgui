@@ -182,7 +182,7 @@ void GeoCsvParser::loadFile(const std::string& filepath)
         headerMap[header[i]] = i;
     }
 
-    const char* requiredColumns[] = {"id", "name", "type", "life", "misc", "geom"};
+    const char* requiredColumns[] = {"id", "name", "type", "life", "geom"};
     for (auto column : requiredColumns)
     {
         if (!headerMap.count(column))
@@ -204,26 +204,44 @@ void GeoCsvParser::loadFile(const std::string& filepath)
         }
 
         auto cols = splitCSVLine(line);
-        auto get  = [&](const char* k) -> std::string
+
+        // Accessors: required/optional by header name
+        auto get = [&](const std::string& k, bool required) -> std::string
         {
             auto it = headerMap.find(k);
-
-            if (it == headerMap.end() || it->second >= cols.size())
+            if (it == headerMap.end())
             {
-                throw std::runtime_error("GeoCsvParser: missing col '" + std::string(k) + "'");
+                if (required)
+                    throw std::runtime_error("GeoCsvParser: missing header '" + k + "'");
+                return {};
             }
-
-            return cols[it->second];
+            const size_t idx = it->second;
+            if (idx >= cols.size())
+            {
+                if (required)
+                {
+                    throw std::runtime_error("GeoCsvParser: line " + std::to_string(currentLineIndex) +
+                                             " has fewer columns than header index for '" + k + "'");
+                }
+                return {};
+            }
+            return cols[idx];
         };
 
-        uint32_t    id      = 0;
-        std::string idStr   = get("id");
-        std::string name    = unquote(get("name"));
-        std::string typeStr = get("type");
-        std::string lifeStr = get("life");
-        std::string misc    = unquote(get("misc"));
-        std::string wkt     = unquote(get("geom"));
+        // TODO: Use the required columns from above instead of hardcoding them again
+        std::string idStr   = get("id", true);
+        std::string name    = unquote(get("name", true));
+        std::string typeStr = get("type", true);
+        std::string lifeStr = get("life", true);
+        std::string misc    = unquote(get("misc", false));
+        std::string wkt     = unquote(get("geom", true));
 
+        if (wkt.empty())
+        {
+            throw std::runtime_error("GeoCsvParser: empty geometry at line " + std::to_string(currentLineIndex));
+        }
+
+        uint32_t id = 0;
         try
         {
             size_t        index = 0;
