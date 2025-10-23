@@ -9,6 +9,196 @@ GeoData::GeoData()
     scanDataDirectory();
 }
 
+void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
+{
+    if (!m_geoData || !heatmap.getAscData())
+    {
+        return;
+    }
+
+    const sf::Vector2f  viewCenter = window.getView().getCenter();
+    const sf::Vector2f  viewSize   = window.getView().getSize();
+    const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
+    const sf::FloatRect spriteRect = heatmap.getHeatmapSprite().getGlobalBounds();
+
+    // AABB Intersection between viewRect and spriteRect (world coords)
+    const sf::Vector2f aMin = spriteRect.position;
+    const sf::Vector2f aMax = spriteRect.position + spriteRect.size;
+    const sf::Vector2f bMin = viewRect.position;
+    const sf::Vector2f bMax = viewRect.position + viewRect.size;
+
+    sf::Vector2f intersectionMin{std::max(aMin.x, bMin.x), std::max(aMin.y, bMin.y)};
+    sf::Vector2f intersectionMax{std::min(aMax.x, bMax.x), std::min(aMax.y, bMax.y)};
+
+    sf::FloatRect intersectionRect(intersectionMin, intersectionMax - intersectionMin);
+
+    // Get intersected (visible) sprite local coords (texture space)
+    const sf::Transform inv              = heatmap.getHeatmapSprite().getInverseTransform();
+    const sf::Vector2f  topLeftLocal     = inv.transformPoint(intersectionRect.position);
+    const sf::Vector2f  bottomRightLocal = inv.transformPoint(intersectionRect.position + intersectionRect.size);
+
+    // TODO: Local coords might not be ordered if there is a negative scale. Assume that there will never be a negative scale
+    const float left   = topLeftLocal.x;
+    const float right  = bottomRightLocal.x;
+    const float top    = topLeftLocal.y;
+    const float bottom = bottomRightLocal.y;
+
+    if (right <= left || bottom <= top)
+    {
+        return;
+    }
+
+    const auto& ascHeader = heatmap.getAscData()->getHeader();
+
+    auto wktToLocal = [&](const GeoCsvParser::Point& point) -> sf::Vector2f
+    {
+        const double cell   = ascHeader.cellsize;
+        const double xLocal = (point.x - ascHeader.xllcorner) / cell;
+        const double yTop   = ascHeader.yllcorner + static_cast<double>(ascHeader.nrows) * cell;
+        const double yLocal = (yTop - point.y) / cell; // must flip Y to match sprite top left origin
+
+        return {static_cast<float>(xLocal), static_cast<float>(yLocal)};
+    };
+
+    auto pointSizeForLife = [&](double life) -> float
+    {
+        if (m_pointSizeScaleByLife)
+        {
+            const float normalizedLife = lifeToUnit(life);
+            return m_pointSizeMin + normalizedLife * (m_pointSizeMax - m_pointSizeMin);
+        }
+
+        return m_pointSizeBase;
+    };
+
+    // This actually is used for both triangles and crosses (crosses are made by two quads which each is made of two triangles).
+    std::vector<sf::Vertex> triangles;
+    const int               triangleVertices = (maximumInRange().size() + minimumInRange().size()) * 3;
+    const int               saddleVertices   = saddlesInRange().size() * 6 * 2;
+
+    triangles.reserve(triangleVertices + saddleVertices);
+
+    auto triangleUp = [&](sf::Vector2f center, float sideLength, sf::Color color)
+    {
+        // Equilateral triangle with pivot at the center position
+        const float        height = 0.866025403784f * sideLength;                             // sqrt(3) / 2
+        const sf::Vector2f p1(center.x, center.y - (2.f / 3.f) * height);                     // apex up
+        const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base left
+        const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base right
+
+        triangles.push_back(sf::Vertex{p1, color});
+        triangles.push_back(sf::Vertex{p2, color});
+        triangles.push_back(sf::Vertex{p3, color});
+    };
+
+    auto triangleDown = [&](sf::Vector2f center, float sideLength, sf::Color color)
+    {
+        // Equilateral triangle with pivot at the center position
+        const float        height = 0.866025403784f * sideLength;                             // sqrt(3) / 2
+        const sf::Vector2f p1(center.x, center.y + (2.f / 3.f) * height);                     // apex down
+        const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base left
+        const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base right
+
+        triangles.push_back(sf::Vertex{p1, color});
+        triangles.push_back(sf::Vertex{p2, color});
+        triangles.push_back(sf::Vertex{p3, color});
+    };
+
+    auto appendCrossSegment = [&](sf::Vector2f start, sf::Vector2f end, float thickness, sf::Color color)
+    {
+        sf::Vector2f direction = end - start;
+        float        length    = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+        if (length <= 0.0001f)
+        {
+            return;
+        }
+
+        direction.x /= length;
+        direction.y /= length;
+        sf::Vector2f normal(-direction.y, direction.x);
+        normal *= (thickness * 0.5f);
+
+        const sf::Vector2f v0 = start - normal;
+        const sf::Vector2f v1 = start + normal;
+        const sf::Vector2f v2 = end + normal;
+        const sf::Vector2f v3 = end - normal;
+
+        // two triangles: (v0, v1, v2) and (v0, v2, v3) (two quads, so 4 triangles)
+        triangles.push_back(sf::Vertex{v0, color});
+        triangles.push_back(sf::Vertex{v1, color});
+        triangles.push_back(sf::Vertex{v2, color});
+
+        triangles.push_back(sf::Vertex{v0, color});
+        triangles.push_back(sf::Vertex{v2, color});
+        triangles.push_back(sf::Vertex{v3, color});
+    };
+
+    auto cross = [&](sf::Vector2f center, float side, sf::Color color)
+    {
+        const float length    = side * 0.6f;
+        const float thickness = std::max(2.0f, side * 0.18f);
+
+        appendCrossSegment({center.x - length, center.y - length}, {center.x + length, center.y + length}, thickness, color);
+        appendCrossSegment({center.x - length, center.y + length}, {center.x + length, center.y - length}, thickness, color);
+    };
+
+    auto emit = [&](const std::vector<const GeoCsvParser::Entity*>& group, sf::Color color, Shape shape)
+    {
+        for (const auto* entity : group)
+        {
+            if (!entity || entity->geom.type != GeoCsvParser::GeometryType::Point)
+            {
+                continue;
+            }
+
+            const sf::Vector2f localPoint = wktToLocal(entity->geom.point);
+
+            // Cull only the ones in visible sprite area
+            if (localPoint.x < left || localPoint.x > right || localPoint.y < top || localPoint.y > bottom)
+            {
+                continue;
+            }
+
+            const sf::Vector2f transformedPoint = heatmap.getHeatmapSprite().getTransform().transformPoint(localPoint);
+            const float        sideLength       = pointSizeForLife(entity->life);
+
+            switch (shape)
+            {
+                case Shape::TriangleUp:
+                    triangleUp(transformedPoint, sideLength, color);
+                    break;
+                case Shape::TriangleDown:
+                    triangleDown(transformedPoint, sideLength, color);
+                    break;
+                case Shape::Cross:
+                    cross(transformedPoint, sideLength, color);
+                    break;
+            }
+        }
+    };
+
+    if (getShowMaximum())
+    {
+        emit(maximumInRange(), getMaximumColor(), Shape::TriangleUp);
+    }
+
+    if (getShowMinimum())
+    {
+        emit(minimumInRange(), getMinimumColor(), Shape::TriangleDown);
+    }
+
+    if (getShowSaddles())
+    {
+        emit(saddlesInRange(), getSaddlesColor(), Shape::Cross);
+    }
+
+    if (!triangles.empty())
+    {
+        window.draw(triangles.data(), triangles.size(), sf::PrimitiveType::Triangles);
+    }
+}
+
 void GeoData::scanDataDirectory()
 {
     const std::string geoFolderPath    = GEO_DATA_PATH;
@@ -52,7 +242,6 @@ void GeoData::loadData(int fileIndex)
         m_lifeMin = m_geoData->getMinLife();
         m_lifeMax = m_geoData->getMaxLife();
 
-        // Default filter = full dataset range
         m_lifeFilterMin = m_lifeMin;
         m_lifeFilterMax = m_lifeMax;
 

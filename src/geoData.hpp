@@ -1,12 +1,13 @@
 #ifndef GEODATA_HPP
 #define GEODATA_HPP
 
-#include <SFML/Graphics/Color.hpp>
+#include <GeoCsvParser.hpp>
+#include <SFML/Graphics.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "GeoCsvParser.hpp"
+#include "heatmap.hpp"
 
 class GeoData
 {
@@ -17,9 +18,17 @@ public:
         Areas = 1
     };
 
+    enum class Shape
+    {
+        TriangleUp,
+        TriangleDown,
+        Cross
+    };
+
     GeoData();
 
-    void scanDataDirectory();
+    void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window);
+
     void loadData(int fileIndex);
 
     const std::vector<std::string>& getGeoFiles() const;
@@ -38,7 +47,7 @@ public:
 
     double getLifeFilterMin() const;
     double getLifeFilterMax() const;
-    void   setLifeFilterRange(double minValue, double maxValue); // clamps + recomputes in range groups
+    void   setLifeFilterRange(double minValue, double maxValue); // clamps and recomputes in range groups
 
     const std::vector<const GeoCsvParser::Entity*>& maximumInRange() const;
     const std::vector<const GeoCsvParser::Entity*>& minimumInRange() const;
@@ -117,7 +126,8 @@ private:
         std::vector<const GeoCsvParser::Entity*> linesAscending;
         std::vector<const GeoCsvParser::Entity*> linesDescending;
         std::vector<const GeoCsvParser::Entity*> areas;
-        void                                     clear()
+
+        void clear()
         {
             maximum.clear();
             minimum.clear();
@@ -151,11 +161,13 @@ private:
     bool m_pointSizeScaleByLife = false;
     bool m_lineColorScaleByLife = false;
 
-    float m_pointSizeBase = 6.0f;
+    float m_pointSizeBase = 8.0f;
     float m_pointSizeMin  = 3.0f;
     float m_pointSizeMax  = 12.0f;
 
     // float m_lineThicknessBase = 2.0f;
+
+    void scanDataDirectory();
 
     void groupEntities();
     void updateLifeFilteredGroups();

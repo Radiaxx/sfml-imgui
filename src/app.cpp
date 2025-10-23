@@ -82,7 +82,10 @@ void App::render()
         m_heatmap.getHeatmapShader().setUniform("uClampMin", m_heatmap.getCurrentClampMin());
         m_heatmap.getHeatmapShader().setUniform("uClampMax", m_heatmap.getCurrentClampMax());
         m_window.draw(m_heatmap.getHeatmapSprite(), &m_heatmap.getHeatmapShader());
+
+        m_geoData.draw(m_heatmap, m_window);
     }
+
 
     m_gridOverlay.draw(m_heatmap, m_window);
     m_cellTooltip.draw(m_heatmap, m_window);
