@@ -22,7 +22,9 @@ public:
     {
         TriangleUp,
         TriangleDown,
-        Cross
+        Cross,
+        LineString,
+        MultiLineString
     };
 
     GeoData();
@@ -100,8 +102,8 @@ public:
     float getPointSizeMin() const;
     float getPointSizeMax() const;
 
-    // float getLineThicknessBase() const;
-    // void  setLineThicknessBase(float value);
+    float getLineThicknessBase() const;
+    void  setLineThicknessBase(float value);
 
     // Normalize life to determine brightness using current filter range: life -> [0,1]
     float lifeToUnit(double life) const;
@@ -165,7 +167,7 @@ private:
     float m_pointSizeMin  = 3.0f;
     float m_pointSizeMax  = 12.0f;
 
-    // float m_lineThicknessBase = 2.0f;
+    float m_lineThicknessBase = 2.0f;
 
     void scanDataDirectory();
 

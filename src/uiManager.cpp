@@ -427,12 +427,11 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverla
             geoData.setLineColorScaleByLife(isLineColorScaledByLife);
         }
 
-        // TODO: Choose if use thick lines or mono pixel ones
-        // float defaultLineThickness = geoData.getLineThicknessBase();
-        // if (ImGui::DragFloat("Base Thickness", &defaultLineThickness, 1.0f, 1.0f, 32.0f))
-        // {
-        //     geoData.setLineThicknessBase(defaultLineThickness);
-        // }
+        float defaultLineThickness = geoData.getLineThicknessBase();
+        if (ImGui::DragFloat("Base Thickness", &defaultLineThickness, 1.0f, 1.0f, 32.0f))
+        {
+            geoData.setLineThicknessBase(defaultLineThickness);
+        }
     }
     else
     {

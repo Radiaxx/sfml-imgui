@@ -19,7 +19,8 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
     const sf::Vector2f  viewCenter = window.getView().getCenter();
     const sf::Vector2f  viewSize   = window.getView().getSize();
     const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
-    const sf::FloatRect spriteRect = heatmap.getHeatmapSprite().getGlobalBounds();
+    const sf::Sprite&   heatmapSprite = heatmap.getHeatmapSprite();
+    const sf::FloatRect spriteRect    = heatmap.getHeatmapSprite().getGlobalBounds();
 
     // AABB Intersection between viewRect and spriteRect (world coords)
     const sf::Vector2f aMin = spriteRect.position;
@@ -60,7 +61,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         return {static_cast<float>(xLocal), static_cast<float>(yLocal)};
     };
 
-    auto pointSizeForLife = [&](double life) -> float
+    auto getLifeScaledPointSize = [&](double life) -> float
     {
         if (m_pointSizeScaleByLife)
         {
@@ -71,17 +72,34 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         return m_pointSizeBase;
     };
 
+    auto applyBrightness = [&](sf::Color base, double lifeValue) -> sf::Color
+    {
+        if (!m_lineColorScaleByLife)
+        {
+            return base;
+        }
+
+        const float value = lifeToUnit(lifeValue); // 0..1
+        const auto  scale = [&](std::uint8_t color) -> std::uint8_t
+        { return static_cast<std::uint8_t>(std::roundf(color * value)); };
+
+        return sf::Color(scale(base.r), scale(base.g), scale(base.b), base.a);
+    };
+
     // This actually is used for both triangles and crosses (crosses are made by two quads which each is made of two triangles).
+    // The point of having a single vertex array is to have a single draw call
     std::vector<sf::Vertex> triangles;
     const int               triangleVertices = (maximumInRange().size() + minimumInRange().size()) * 3;
     const int               saddleVertices   = saddlesInRange().size() * 6 * 2;
+    const int               lineVertices     = (linesAscendingInRange().size() + linesDescendingInRange().size()) * 64;
 
-    triangles.reserve(triangleVertices + saddleVertices);
+    triangles.reserve(triangleVertices + saddleVertices + lineVertices);
 
     auto triangleUp = [&](sf::Vector2f center, float sideLength, sf::Color color)
     {
         // Equilateral triangle with pivot at the center position
-        const float        height = 0.866025403784f * sideLength;                             // sqrt(3) / 2
+        const float        sqrt32 = 0.866025403784f; // sqrt(3) / 2
+        const float        height = sqrt32 * sideLength;
         const sf::Vector2f p1(center.x, center.y - (2.f / 3.f) * height);                     // apex up
         const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base left
         const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base right
@@ -94,7 +112,8 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
     auto triangleDown = [&](sf::Vector2f center, float sideLength, sf::Color color)
     {
         // Equilateral triangle with pivot at the center position
-        const float        height = 0.866025403784f * sideLength;                             // sqrt(3) / 2
+        const float        sqrt32 = 0.866025403784f; // sqrt(3) / 2
+        const float        height = sqrt32 * sideLength;
         const sf::Vector2f p1(center.x, center.y + (2.f / 3.f) * height);                     // apex down
         const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base left
         const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base right
@@ -104,7 +123,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         triangles.push_back(sf::Vertex{p3, color});
     };
 
-    auto appendCrossSegment = [&](sf::Vector2f start, sf::Vector2f end, float thickness, sf::Color color)
+    auto appendRectangle = [&](sf::Vector2f start, sf::Vector2f end, float thickness, sf::Color color)
     {
         sf::Vector2f direction = end - start;
         float        length    = std::sqrt(direction.x * direction.x + direction.y * direction.y);
@@ -134,14 +153,44 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         triangles.push_back(sf::Vertex{v3, color});
     };
 
+    auto appendCircle = [&](sf::Vector2f center, float radius, sf::Color color)
+    {
+        if (radius <= 0.0f)
+        {
+            return;
+        }
+
+        const int   segments = 16;
+        const float pi       = 3.14159265359f;
+        const float step     = 2.0f * pi / segments;
+
+        sf::Vector2f prev(center.x + radius, center.y);
+
+        for (int i = 1; i <= segments; ++i)
+        {
+            const float        angle = i * step;
+            const sf::Vector2f current(center.x + std::cos(angle) * radius, center.y + std::sin(angle) * radius);
+
+            triangles.push_back(sf::Vertex{center, color});
+            triangles.push_back(sf::Vertex{prev, color});
+            triangles.push_back(sf::Vertex{current, color});
+
+            prev = current;
+        }
+    };
+
     auto cross = [&](sf::Vector2f center, float side, sf::Color color)
     {
         const float length    = side * 0.6f;
         const float thickness = std::max(2.0f, side * 0.18f);
 
-        appendCrossSegment({center.x - length, center.y - length}, {center.x + length, center.y + length}, thickness, color);
-        appendCrossSegment({center.x - length, center.y + length}, {center.x + length, center.y - length}, thickness, color);
+        appendRectangle({center.x - length, center.y - length}, {center.x + length, center.y + length}, thickness, color);
+        appendRectangle({center.x - length, center.y + length}, {center.x + length, center.y - length}, thickness, color);
     };
+
+    auto isPointWithinVisibleArea = [&](const sf::Vector2f& point) -> bool
+    { return !(point.x < left || point.x > right || point.y < top || point.y > bottom); };
+
 
     auto emit = [&](const std::vector<const GeoCsvParser::Entity*>& group, sf::Color color, Shape shape)
     {
@@ -155,13 +204,13 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             const sf::Vector2f localPoint = wktToLocal(entity->geom.point);
 
             // Cull only the ones in visible sprite area
-            if (localPoint.x < left || localPoint.x > right || localPoint.y < top || localPoint.y > bottom)
+            if (!isPointWithinVisibleArea(localPoint))
             {
                 continue;
             }
 
             const sf::Vector2f transformedPoint = heatmap.getHeatmapSprite().getTransform().transformPoint(localPoint);
-            const float        sideLength       = pointSizeForLife(entity->life);
+            const float        sideLength       = getLifeScaledPointSize(entity->life);
 
             switch (shape)
             {
@@ -178,6 +227,86 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         }
     };
 
+    if (m_displayMode == DisplayMode::Lines)
+    {
+        const float thickness = std::max(1.0f, m_lineThicknessBase);
+
+        auto emitLineString = [&](const std::vector<GeoCsvParser::Point>& path, sf::Color color, double life)
+        {
+            if (path.size() < 2)
+            {
+                return;
+            }
+
+            const sf::Color lineColor   = applyBrightness(color, life);
+            const float     jointRadius = thickness * 0.5f;
+
+            // Draw segments as rectangles
+            for (std::size_t i = 0; i + 1 < path.size(); ++i)
+            {
+                const sf::Vector2f aLocal = wktToLocal(path[i]);
+                const sf::Vector2f bLocal = wktToLocal(path[i + 1]);
+
+                // Draw if at least one endpoint is visible in the current view
+                if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f aWorld = heatmapSprite.getTransform().transformPoint(aLocal);
+                const sf::Vector2f bWorld = heatmapSprite.getTransform().transformPoint(bLocal);
+
+                appendRectangle(aWorld, bWorld, thickness, lineColor);
+            }
+
+            // Draw joint circles at endpoints
+            for (const auto& endpoint : path)
+            {
+                const sf::Vector2f localPosition = wktToLocal(endpoint);
+
+                if (!isPointWithinVisibleArea(localPosition))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f worldPosition = heatmapSprite.getTransform().transformPoint(localPosition);
+                appendCircle(worldPosition, jointRadius, lineColor);
+            }
+        };
+
+        // For each linestring in the geometry emit a line. Note: lines.size() is 1 for LINESTRING and >=1 for MULTILINESTRING but they are basically the same behavior
+        auto emitLines = [&](const GeoCsvParser::Geometry& geometry, sf::Color color, double life)
+        {
+            for (const auto& lineString : geometry.lines)
+            {
+                if (lineString.points.size() >= 2)
+                {
+                    emitLineString(lineString.points, color, life);
+                }
+            }
+        };
+
+        if (getShowLinesAscending())
+        {
+            const sf::Color color = getLineAscColor();
+            for (const auto* entity : linesAscendingInRange())
+            {
+                emitLines(entity->geom, color, entity->life);
+            }
+        }
+
+        if (getShowLinesDescending())
+        {
+            const sf::Color color = getLineDescColor();
+            for (const auto* entity : linesDescendingInRange())
+            {
+                emitLines(entity->geom, color, entity->life);
+            }
+        }
+    }
+
+
+    // Draw markers after lines / areas so they are always on top
     if (getShowMaximum())
     {
         emit(maximumInRange(), getMaximumColor(), Shape::TriangleUp);
@@ -684,14 +813,14 @@ float GeoData::getPointSizeMax() const
     return m_pointSizeMax;
 }
 
-// float GeoData::getLineThicknessBase() const
-// {
-//     return m_lineThicknessBase;
-// }
+float GeoData::getLineThicknessBase() const
+{
+    return m_lineThicknessBase;
+}
 
-// void GeoData::setLineThicknessBase(float value)
-// {
-//     m_lineThicknessBase = value;
-// }
+void GeoData::setLineThicknessBase(float value)
+{
+    m_lineThicknessBase = value;
+}
 
 #pragma endregion
