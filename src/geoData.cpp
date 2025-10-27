@@ -88,12 +88,24 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
 
     // This actually is used for both triangles and crosses (crosses are made by two quads which each is made of two triangles).
     // The point of having a single vertex array is to have a single draw call
+    // Note: circle segments are the only intensive part since they generate many triangles. If noticing any performance issus then consider batching them in a smarter way
     std::vector<sf::Vertex> triangles;
-    const int               triangleVertices = (maximumInRange().size() + minimumInRange().size()) * 3;
-    const int               saddleVertices   = saddlesInRange().size() * 6 * 2;
-    const int               lineVertices     = (linesAscendingInRange().size() + linesDescendingInRange().size()) * 64;
+    const int triangleVertices = (maximumInRange().size() + minimumInRange().size()) * 3; // three vertices per triangle
+    const int saddleVertices = saddlesInRange().size() * 6 * 2; // two quad per cross. Each quad is two triangles of three vertices
 
-    triangles.reserve(triangleVertices + saddleVertices + lineVertices);
+    const int lineAscVertices = getShowLinesAscending() && getDisplayMode() == DisplayMode::Lines
+                                    ? (linesAscendingInRange().size() * 6 * 8 * 3) // quad * circle segments * 3 vertices of each segment
+                                    : 0;
+
+    const int lineDescVertices = getShowLinesDescending() && getDisplayMode() == DisplayMode::Lines
+                                     ? (linesDescendingInRange().size() * 6 * 8 * 3) // quad * circle segments * 3 vertices of each segment
+                                     : 0;
+
+    const int areaVertices = getShowAreas() && getDisplayMode() == DisplayMode::Areas
+                                 ? (areasInRange().size() * (6 * 8 * 3)) // quad * circle segments * 3 vertices of each segment
+                                 : 0;
+
+    triangles.reserve(triangleVertices + saddleVertices + lineAscVertices + lineDescVertices + areaVertices);
 
     auto triangleUp = [&](sf::Vector2f center, float sideLength, sf::Color color)
     {
@@ -143,7 +155,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         const sf::Vector2f v2 = end + normal;
         const sf::Vector2f v3 = end - normal;
 
-        // two triangles: (v0, v1, v2) and (v0, v2, v3) (two quads, so 4 triangles)
+        // two triangles: (v0, v1, v2) and (v0, v2, v3) (two triangles, so one quad)
         triangles.push_back(sf::Vertex{v0, color});
         triangles.push_back(sf::Vertex{v1, color});
         triangles.push_back(sf::Vertex{v2, color});
@@ -160,7 +172,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             return;
         }
 
-        const int   segments = 16;
+        const int   segments = 8;
         const float pi       = 3.14159265359f;
         const float step     = 2.0f * pi / segments;
 
@@ -305,6 +317,134 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         }
     }
 
+    if (m_displayMode == DisplayMode::Areas && getShowAreas())
+    {
+        const float     thickness  = std::max(1.0f, m_lineThicknessBase);
+        const sf::Color areasColor = getAreasColor();
+
+        auto emitLineString = [&](const std::vector<GeoCsvParser::Point>& path, sf::Color color, double life)
+        {
+            if (path.size() < 2)
+            {
+                return;
+            }
+
+            const sf::Color lineColor   = applyBrightness(color, life);
+            const float     jointRadius = thickness * 0.5f;
+
+            // Draw segments as rectangles
+            for (std::size_t i = 0; i + 1 < path.size(); ++i)
+            {
+                const sf::Vector2f aLocal = wktToLocal(path[i]);
+                const sf::Vector2f bLocal = wktToLocal(path[i + 1]);
+
+                // Draw if at least one endpoint is visible in the current view
+                if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f aWorld = heatmapSprite.getTransform().transformPoint(aLocal);
+                const sf::Vector2f bWorld = heatmapSprite.getTransform().transformPoint(bLocal);
+
+                appendRectangle(aWorld, bWorld, thickness, lineColor);
+            }
+
+            // Draw joint circles at endpoints
+            for (const auto& endpoint : path)
+            {
+                const sf::Vector2f localPosition = wktToLocal(endpoint);
+
+                if (!isPointWithinVisibleArea(localPosition))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f worldPosition = heatmapSprite.getTransform().transformPoint(localPosition);
+                appendCircle(worldPosition, jointRadius, lineColor);
+            }
+        };
+
+        auto emitClosedRing = [&](const std::vector<GeoCsvParser::Point>& ring, sf::Color color, double life)
+        {
+            if (ring.size() < 2)
+            {
+                return;
+            }
+
+            const sf::Color ringColor   = applyBrightness(color, life);
+            const float     jointRadius = thickness * 0.5f;
+
+            const std::size_t N = ring.size();
+            for (std::size_t i = 0; i < N; ++i)
+            {
+                const std::size_t j = (i + 1) % N;
+
+                const sf::Vector2f aLocal = wktToLocal(ring[i]);
+                const sf::Vector2f bLocal = wktToLocal(ring[j]);
+
+                if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f aWorld = heatmap.getHeatmapSprite().getTransform().transformPoint(aLocal);
+                const sf::Vector2f bWorld = heatmap.getHeatmapSprite().getTransform().transformPoint(bLocal);
+
+                appendRectangle(aWorld, bWorld, thickness, ringColor);
+            }
+
+            for (const auto& point : ring)
+            {
+                const sf::Vector2f localPosition = wktToLocal(point);
+                if (!isPointWithinVisibleArea(localPosition))
+                {
+                    continue;
+                }
+
+                const sf::Vector2f pWorld = heatmap.getHeatmapSprite().getTransform().transformPoint(localPosition);
+                appendCircle(pWorld, jointRadius, ringColor);
+            }
+        };
+
+        // Areas can come both as Polygon and MultiLineString
+        auto emitAreaGeometry = [&](const GeoCsvParser::Geometry& geom, sf::Color color, double life)
+        {
+            bool drewPolygons = false;
+
+            if (!geom.polygons.empty())
+            {
+                drewPolygons = true;
+                for (const auto& polygon : geom.polygons)
+                {
+                    // outer line and holes
+                    for (const auto& ring : polygon.rings)
+                    {
+                        if (ring.points.size() >= 2)
+                        {
+                            emitClosedRing(ring.points, color, life);
+                        }
+                    }
+                }
+            }
+
+            if (!drewPolygons)
+            {
+                for (const auto& line : geom.lines)
+                {
+                    if (line.points.size() >= 2)
+                    {
+                        emitLineString(line.points, color, life);
+                    }
+                }
+            }
+        };
+
+        for (const auto* entity : areasInRange())
+        {
+            emitAreaGeometry(entity->geom, areasColor, entity->life);
+        }
+    }
 
     // Draw markers after lines / areas so they are always on top
     if (getShowMaximum())

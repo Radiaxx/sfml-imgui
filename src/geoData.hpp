@@ -164,8 +164,8 @@ private:
     bool m_lineColorScaleByLife = false;
 
     float m_pointSizeBase = 8.0f;
-    float m_pointSizeMin  = 3.0f;
-    float m_pointSizeMax  = 12.0f;
+    float m_pointSizeMin  = 5.0f;
+    float m_pointSizeMax  = 16.0f;
 
     float m_lineThicknessBase = 2.0f;
 
