@@ -1,19 +1,21 @@
 add_library(AscParser STATIC
-    AscParser.cpp
-    AscParser.hpp
+    ascParser.cpp
+    ascParser.hpp
 )
 
+target_compile_features(AscParser PRIVATE cxx_std_17)
 target_include_directories(AscParser PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_library(GeoCsvParser STATIC
-    GeoCsvParser.cpp
-    GeoCsvParser.hpp
-    WktParser.cpp
-    WktParser.hpp
+    geoCsvParser.cpp
+    geoCsvParser.hpp
+    wktParser.cpp
+    wktParser.hpp
 )
 
+target_compile_features(GeoCsvParser PRIVATE cxx_std_17)
 target_include_directories(GeoCsvParser PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )

@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string>
 
-#include "AscParser.hpp"
+#include "ascParser.hpp"
 
 static std::string toLower(const std::string& str)
 {

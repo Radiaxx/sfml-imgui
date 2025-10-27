@@ -1,8 +1,8 @@
 #ifndef GEODATA_HPP
 #define GEODATA_HPP
 
-#include <GeoCsvParser.hpp>
 #include <SFML/Graphics.hpp>
+#include <geoCsvParser.hpp>
 #include <memory>
 #include <string>
 #include <vector>
