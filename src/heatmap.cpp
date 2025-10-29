@@ -208,12 +208,11 @@ void Heatmap::updateHeatmapTexture()
     const auto&        doubleData = m_ascData->getData();
     std::vector<float> floatData(doubleData.begin(), doubleData.end());
 
-    if (m_heatmapTexture.getNativeHandle() == 0)
-    {
-        const bool result = m_heatmapTexture.resize(
-            {static_cast<unsigned int>(header.ncols), static_cast<unsigned int>(header.nrows)});
+    const sf::Vector2u newSize{static_cast<unsigned>(header.ncols), static_cast<unsigned>(header.nrows)};
 
-        if (!result)
+    if (m_heatmapTexture.getSize() != newSize)
+    {
+        if (!m_heatmapTexture.resize(newSize))
         {
             throw std::runtime_error("Failed to resize heatmap texture");
         }
