@@ -49,7 +49,7 @@ void App::handleEvents()
                           [this](const sf::Event::MouseButtonPressed& event)
                           {
                               m_viewControls.handleMouseButtonPressed(event);
-                              m_cellTooltip.handleMouseButtonPressed(event, m_heatmap, m_window);
+                              m_cellTooltip.handleMouseButtonPressed(event, m_heatmap, m_geoData, m_window);
                               ImGui::SFML::ProcessEvent(m_window, event);
                           },
                           [this](const sf::Event::MouseButtonReleased& event)
@@ -75,7 +75,7 @@ void App::render()
     m_window.clear(sf::Color::Black);
 
     m_heatmap.draw(m_window.getView());
-    m_uiManager.draw(m_heatmap, m_geoData, m_gridOverlay);
+    m_uiManager.draw(m_heatmap, m_geoData, m_cellTooltip, m_gridOverlay);
 
     if (m_heatmap.getAscData())
     {

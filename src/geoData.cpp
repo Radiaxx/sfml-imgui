@@ -963,4 +963,72 @@ void GeoData::setLineThicknessBase(float value)
     m_lineThicknessBase = value;
 }
 
+std::size_t GeoData::countLineSegmentsAscending() const
+{
+    std::size_t count = 0;
+
+    for (const auto* entity : m_groups.linesAscending)
+    {
+        for (const auto& lineString : entity->geom.lines)
+        {
+            if (lineString.points.size() >= 2)
+            {
+                count += lineString.points.size() - 1;
+            }
+        }
+    }
+
+    return count;
+}
+
+std::size_t GeoData::countLineSegmentsDescending() const
+{
+    std::size_t count = 0;
+
+    for (const auto* entity : m_groups.linesDescending)
+    {
+        for (const auto& lineString : entity->geom.lines)
+        {
+            if (lineString.points.size() >= 2)
+            {
+                count += lineString.points.size() - 1;
+            }
+        }
+    }
+
+    return count;
+}
+
+std::size_t GeoData::countAreaSegments() const
+{
+    std::size_t count = 0;
+
+    for (const auto* entity : m_groups.areas)
+    {
+        for (const auto& polygon : entity->geom.polygons)
+        {
+            for (const auto& ring : polygon.rings)
+            {
+                if (ring.points.size() >= 2)
+                {
+                    count += ring.points.size();
+                }
+            }
+        }
+
+        if (entity->geom.polygons.empty())
+        {
+            for (const auto& lineString : entity->geom.lines)
+            {
+                if (lineString.points.size() >= 2)
+                {
+                    count += lineString.points.size() - 1;
+                }
+            }
+        }
+    }
+
+    return count;
+}
+
 #pragma endregion

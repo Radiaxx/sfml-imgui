@@ -108,6 +108,11 @@ public:
     // Normalize life to determine brightness using current filter range: life -> [0,1]
     float lifeToUnit(double life) const;
 
+    // Helpers for spatial indexing
+    std::size_t countLineSegmentsAscending() const;
+    std::size_t countLineSegmentsDescending() const;
+    std::size_t countAreaSegments() const;
+
 private:
     std::vector<std::string>      m_geoFiles;
     int                           m_selectedFileIndex = -1;

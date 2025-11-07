@@ -15,7 +15,7 @@ static sf::Color fromImVec4ToColor(const ImVec4& vec)
     return sf::Color(toU8(vec.x), toU8(vec.y), toU8(vec.z), toU8(vec.w));
 }
 
-void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverlay)
+void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellTooltip, GridOverlay& gridOverlay)
 {
     const float          initialWidth = 380.0f;
     const ImGuiViewport* viewport     = ImGui::GetMainViewport();
@@ -187,6 +187,7 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, GridOverlay& gridOverla
                 if (selectedGeoFileIndex != i)
                 {
                     geoData.loadData(i);
+                    cellTooltip.rebuildSpatialIndex(heatmap, geoData);
                 }
             }
 

@@ -31,3 +31,15 @@ set(IMGUI_DIR ${imgui_SOURCE_DIR})
 set(IMGUI_SFML_FIND_SFML OFF)
 set(IMGUI_SFML_IMGUI_DEMO ON)
 FetchContent_MakeAvailable(imgui-sfml)
+
+FetchContent_Declare(
+  boost_headers
+  URL      https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-b2-nodocs.tar.gz
+  URL_HASH SHA256=aa25e7b9c227c21abb8a681efd4fe6e54823815ffc12394c9339de998eb503fb
+)
+
+FetchContent_MakeAvailable(boost_headers)
+
+add_library(BoostHeaders INTERFACE)
+target_include_directories(BoostHeaders INTERFACE
+  "${boost_headers_SOURCE_DIR}")
