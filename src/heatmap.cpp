@@ -50,7 +50,7 @@ void Heatmap::loadData(int fileIndex)
 
     try
     {
-        const std::string dataFolderPath = DATA_PATH;
+        const std::string dataFolderPath = ASC_DATA_PATH;
         std::string       filepath       = dataFolderPath + "/" + filename;
         m_ascData                        = std::make_unique<AscParser>(filepath);
 
@@ -175,7 +175,7 @@ float Heatmap::getCurrentClampMax() const
 
 void Heatmap::scanDataDirectory()
 {
-    const std::string dataFolderPath   = DATA_PATH;
+    const std::string dataFolderPath   = ASC_DATA_PATH;
     const std::string ascFileExtension = ".asc";
     m_dataFiles.clear();
 

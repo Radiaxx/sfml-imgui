@@ -16,7 +16,8 @@ Daniele Scrima's Bachelor Thesis project, an interactive visualization of 2D sca
 
 ```
 sfml-imgui/
-├── data/           # ASC raster files (auto scanned at startup)
+├── data/
+│   ├── asc/        # ASC files (auto scanned at startup)
 │   └── geo/        # Optional GeoCSV files (auto scanned at startup)
 ├── shaders/        # GLSL shaders
 ├── src/            # Application source code
@@ -25,7 +26,7 @@ sfml-imgui/
 ```
 
 > **Note**: All paths are predefined in CMake as compile definitions:
-> - `DATA_PATH` -> `data/`
+> - `ASC_DATA_PATH` -> `data/asc/`
 > - `GEO_DATA_PATH` -> `data/geo/`
 > - `SHADERS_PATH` -> `shaders/`
 
