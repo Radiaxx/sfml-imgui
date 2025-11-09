@@ -13,9 +13,11 @@ public:
 
     void draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellTooltip, GridOverlay& gridOverlay);
 
+    bool hasRequestedZoomReset();
     void setView(sf::View view);
 
 private:
+    bool     m_hasRequestedZoomReset = false;
     sf::View m_view;
 };
 

@@ -72,6 +72,35 @@ void Heatmap::loadData(int fileIndex)
     }
 }
 
+void Heatmap::unloadData()
+{
+    m_ascData.reset();
+    m_selectedFileIndex = -1;
+
+    m_globalMin = 0.0f;
+    m_globalMax = 0.0f;
+
+    m_currentClampMin = 0.0f;
+    m_currentClampMax = 0.0f;
+
+    m_manualClampMin = 0.0f;
+    m_manualClampMax = 0.0f;
+}
+
+void Heatmap::resetAscSettingsToDefaults()
+{
+    if (!m_ascData)
+    {
+        return;
+    }
+
+    m_isAutoClamping  = false;
+    m_manualClampMin  = m_globalMin;
+    m_manualClampMax  = m_globalMax;
+    m_currentClampMin = m_manualClampMin;
+    m_currentClampMax = m_manualClampMax;
+}
+
 void Heatmap::setCurrentColormapID(int id)
 {
     m_currentColormapID = id;

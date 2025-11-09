@@ -1,7 +1,57 @@
 #include <imgui.h>
 
+#include "cellTooltip.hpp"
 #include "geoData.hpp"
+#include "heatmap.hpp"
 #include "uiManager.hpp"
+
+static bool iconRightButton(const char* id, const char* tooltip, const char* icon)
+{
+    const float height = ImGui::GetFrameHeight();
+
+    ImGui::SameLine();
+
+    // align to right side
+    const float targetX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - height;
+    ImGui::SetCursorPosX(targetX);
+
+    // just to ensure id is unique even if the ui component repeats. Otherwise imgui will complain
+    ImGui::PushID(id);
+    bool pressed = ImGui::Button(icon, ImVec2(height, height));
+    ImGui::PopID();
+
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("%s", tooltip);
+    }
+
+    return pressed;
+}
+
+static bool leftIconRightButton(const char* id, const char* tooltip, const char* icon)
+{
+    const float height  = ImGui::GetFrameHeight();
+    const float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
+    const float totalW  = height * 2.0f + spacing;
+
+    ImGui::SameLine();
+
+    // align to right side
+    const float targetX = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - totalW;
+    ImGui::SetCursorPosX(targetX);
+
+    // just to ensure id is unique even if the ui component repeats. Otherwise imgui will complain
+    ImGui::PushID(id);
+    bool pressed = ImGui::Button(icon, ImVec2(height, height));
+    ImGui::PopID();
+
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::SetTooltip("%s", tooltip);
+    }
+
+    return pressed;
+}
 
 static ImVec4 toImVec4FromColor(sf::Color color)
 {
@@ -29,6 +79,34 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
     ImGui::Begin("Control Panel");
 
     ImGui::Text("Dataset Selection");
+
+    const bool hasAsc = (heatmap.getAscData() != nullptr);
+
+    if (!hasAsc)
+    {
+        ImGui::BeginDisabled();
+    }
+
+    bool zoomResetPressed = leftIconRightButton("asc-zoom-reset", "Reset zoom to fit", u8"z");
+    bool unloadAscPressed = iconRightButton("asc-unload", "Unload dataset", u8"x");
+
+    if (!hasAsc)
+    {
+        ImGui::EndDisabled();
+    }
+
+    if (zoomResetPressed && hasAsc)
+    {
+        m_hasRequestedZoomReset = true;
+    }
+
+    if (unloadAscPressed && hasAsc)
+    {
+        heatmap.unloadData();
+        cellTooltip.hide();
+    }
+
+
     const auto& dataFiles         = heatmap.getDataFiles();
     int         selectedFileIndex = heatmap.getSelectedFileIndex();
     const char* combo_preview_value = (selectedFileIndex >= 0) ? dataFiles[selectedFileIndex].c_str() : "Select a file...";
@@ -38,7 +116,6 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         for (int i = 0; i < static_cast<int>(dataFiles.size()); ++i)
         {
             const bool is_selected = (selectedFileIndex == i);
-
             if (ImGui::Selectable(dataFiles[i].c_str(), is_selected))
             {
                 if (selectedFileIndex != i)
@@ -47,13 +124,9 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
                     heatmap.updateHeatmapView(m_view);
                 }
             }
-
             if (is_selected)
-            {
                 ImGui::SetItemDefaultFocus();
-            }
         }
-
         ImGui::EndCombo();
     }
 
@@ -61,7 +134,6 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Display loaded file info
     if (heatmap.getAscData())
     {
         ImGui::Text("File Information:");
@@ -79,6 +151,11 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         ImGui::Spacing();
 
         ImGui::Text("Settings:");
+        if (iconRightButton("reset-asc-settings", "Restore 'Show values', auto clamp and min/max", u8"x"))
+        {
+            gridOverlay.resetToDefaults();
+            heatmap.resetAscSettingsToDefaults();
+        }
 
         bool showValues = gridOverlay.isShowingValues();
         if (ImGui::Checkbox("Show Values", &showValues))
@@ -92,7 +169,7 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
             heatmap.setAutoClamp(isAuto);
         }
 
-        // Disable the manual slider if auto clamping is on
+        // Disable manual range while auto clamping is on
         if (isAuto)
         {
             ImGui::BeginDisabled();
@@ -103,19 +180,12 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         constexpr float dragSpeed = 1.0f;
 
         ImGui::DragFloatRange2("min/max Range", &minVal, &maxVal, dragSpeed, heatmap.getGlobalMin(), heatmap.getGlobalMax());
-
         if (minVal != heatmap.getManualClampMin() || maxVal != heatmap.getManualClampMax())
         {
             if (minVal < globalMinValue)
-            {
                 minVal = globalMinValue;
-            }
-
             if (maxVal > globalMaxValue)
-            {
                 maxVal = globalMaxValue;
-            }
-
             heatmap.setManualClampRange(minVal, maxVal);
         }
 
@@ -133,13 +203,9 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Display colormap selection
     ImGui::Text("Colormap Selection");
-
-    const auto& colormapNames = Heatmap::COLORMAP_NAMES;
-    int         colormapID    = heatmap.getCurrentColormapID();
-
-    // Since colormapID is initialized to 0 this will always be valid
+    const auto& colormapNames          = Heatmap::COLORMAP_NAMES;
+    int         colormapID             = heatmap.getCurrentColormapID();
     const char* colormap_preview_value = colormapNames[colormapID].c_str();
 
     if (ImGui::BeginCombo("Colormap", colormap_preview_value))
@@ -147,6 +213,7 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         for (int i = 0; i < colormapNames.size(); ++i)
         {
             const bool is_selected = (colormapID == i);
+
             if (ImGui::Selectable(colormapNames[i].c_str(), is_selected))
             {
                 if (colormapID != i)
@@ -168,8 +235,27 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
     ImGui::Separator();
     ImGui::Spacing();
 
-    // Display geo data selection
     ImGui::Text("Geo Data Selection");
+
+    {
+        const bool hasGeoData = (geoData.getGeoData() != nullptr);
+
+        if (!hasGeoData)
+        {
+            ImGui::BeginDisabled();
+        }
+
+        if (iconRightButton("reset-geo-dataset", "Unload Geo data", u8"x"))
+        {
+            geoData.unloadData();
+            cellTooltip.hide();
+        }
+
+        if (!hasGeoData)
+        {
+            ImGui::EndDisabled();
+        }
+    }
 
     const auto& geoFiles             = geoData.getGeoFiles();
     int         selectedGeoFileIndex = geoData.getSelectedFileIndex();
@@ -196,13 +282,12 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
                 ImGui::SetItemDefaultFocus();
             }
         }
+
         ImGui::EndCombo();
     }
 
-    // Display geo data info and category toggles
     if (geoData.getGeoData())
     {
-        // Display loaded geo data info
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -211,10 +296,17 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         ImGui::Text("  - Entities: %zu", geoData.getGeoData()->getEntities().size());
         ImGui::Text("  - Life Range: %.3f / %.3f", geoData.getLifeMin(), geoData.getLifeMax());
 
-        // Display life filter
         float lifeMin = static_cast<float>(geoData.getLifeFilterMin());
         float lifeMax = static_cast<float>(geoData.getLifeFilterMax());
+
         ImGui::Text("Filter by life:");
+        if (iconRightButton("reset-life-filter", "Restore full life range", u8"x"))
+        {
+            geoData.resetLifeFilterToDefaults();
+            lifeMin = static_cast<float>(geoData.getLifeFilterMin());
+            lifeMax = static_cast<float>(geoData.getLifeFilterMax());
+        }
+
         if (ImGui::DragFloatRange2("life range",
                                    &lifeMin,
                                    &lifeMax,
@@ -225,31 +317,37 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
             geoData.setLifeFilterRange(lifeMin, lifeMax);
         }
 
-        // Display mode (lines or areas)
+        // Display mode
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
         ImGui::Text("Display Mode:");
 
         int displayMode = (geoData.getDisplayMode() == GeoData::DisplayMode::Lines) ? 0 : 1;
+
         if (ImGui::RadioButton("Lines", displayMode == 0))
         {
-            displayMode = 0;
             geoData.setDisplayMode(GeoData::DisplayMode::Lines);
+            displayMode = 0;
         }
 
         ImGui::SameLine();
+
         if (ImGui::RadioButton("Areas", displayMode == 1))
         {
-            displayMode = 1;
             geoData.setDisplayMode(GeoData::DisplayMode::Areas);
+            displayMode = 1;
         }
 
-        // Entity toggles
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
         ImGui::Text("Entity Selection");
+
+        if (iconRightButton("reset-entity-visibility", "Restore points/lines/areas visibility", u8"x"))
+        {
+            geoData.resetVisibilityToDefaults();
+        }
 
         // Points
         ImGui::Text("Points");
@@ -293,10 +391,7 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         // Lines (disabled if Areas mode)
         const bool linesDisabled = (geoData.getDisplayMode() == GeoData::DisplayMode::Areas);
         if (linesDisabled)
-        {
             ImGui::BeginDisabled();
-        }
-
         ImGui::Spacing();
         ImGui::Text("Lines");
         bool isLinesAscending  = geoData.getShowLinesAscending();
@@ -349,11 +444,15 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
             ImGui::EndDisabled();
         }
 
-        // Display colors
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
         ImGui::Text("Colors");
+
+        if (iconRightButton("reset-geo-colors", "Restore colors", u8"x"))
+        {
+            geoData.resetColorsToDefaults();
+        }
 
         ImVec4 maximumColor = toImVec4FromColor(geoData.getMaximumColor());
         if (ImGui::ColorEdit4("Maximum", &maximumColor.x))
@@ -396,7 +495,11 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         ImGui::Spacing();
         ImGui::Text("Points Scaling");
 
-        // Points: size scaling toggle + ranges
+        if (iconRightButton("reset-points-scaling", "Restore point scaling", u8"x"))
+        {
+            geoData.resetPointScalingToDefaults();
+        }
+
         bool pointSizeScale = geoData.getPointSizeScaleByLife();
         if (ImGui::Checkbox("Scale marker size by life", &pointSizeScale))
         {
@@ -411,17 +514,23 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
 
         float pointSizeMin = geoData.getPointSizeMin();
         float pointSizeMax = geoData.getPointSizeMax();
+
         if (ImGui::DragFloatRange2("Size range", &pointSizeMin, &pointSizeMax, 0.1f, 1.0f, 64.0f))
         {
             geoData.setPointSizeRange(pointSizeMin, pointSizeMax);
         }
 
+        // Lines/Areas Scaling
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
         ImGui::Text("Lines/Areas Scaling");
 
-        // Lines/Areas: choose color route (brightness). One toggle applies to whichever is visible now.
+        if (iconRightButton("reset-linearea-scaling", "Restore line/area scaling", u8"x"))
+        {
+            geoData.resetLineAreaScalingToDefaults();
+        }
+
         bool isLineColorScaledByLife = geoData.getLineColorScaleByLife();
         if (ImGui::Checkbox("Scale color BRIGHTNESS by life", &isLineColorScaledByLife))
         {
@@ -439,8 +548,15 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
         ImGui::TextDisabled("Load geo data to enable controls below.");
     }
 
-
     ImGui::End();
+}
+
+bool UIManager::hasRequestedZoomReset()
+{
+    const bool request      = m_hasRequestedZoomReset;
+    m_hasRequestedZoomReset = false;
+
+    return request;
 }
 
 void UIManager::setView(sf::View view)

@@ -20,6 +20,9 @@ public:
     void draw(const sf::View& view);
 
     void loadData(int fileIndex);
+    void unloadData();
+    void resetAscSettingsToDefaults();
+
     void setCurrentColormapID(int id);
     void updateHeatmapView(sf::View view);
 

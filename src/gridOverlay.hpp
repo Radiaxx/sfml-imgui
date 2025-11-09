@@ -12,6 +12,7 @@ public:
 
     void setShowValues(bool enabled);
     bool isShowingValues() const;
+    void resetToDefaults();
 
 private:
     struct VisibleGridRegion
@@ -26,7 +27,12 @@ private:
         float bottom;
     };
 
-    bool m_isShowingValues = false;
+    struct Defaults
+    {
+        bool showValues = false;
+    } m_defaults;
+
+    bool m_isShowingValues = m_defaults.showValues;
 
     void drawGridLines(const sf::Sprite& sprite, const sf::View& view, sf::RenderWindow& window, const VisibleGridRegion& region);
     void drawGridValues(const sf::Sprite&                 sprite,

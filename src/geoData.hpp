@@ -32,6 +32,13 @@ public:
     void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window);
 
     void loadData(int fileIndex);
+    void unloadData();
+
+    void resetColorsToDefaults();
+    void resetVisibilityToDefaults();
+    void resetPointScalingToDefaults();
+    void resetLineAreaScalingToDefaults();
+    void resetLifeFilterToDefaults();
 
     const std::vector<std::string>& getGeoFiles() const;
     int                             getSelectedFileIndex() const;
@@ -114,6 +121,30 @@ public:
     std::size_t countAreaSegments() const;
 
 private:
+    struct Defaults
+    {
+        sf::Color colorMaximum  = {255, 0, 0, 255};
+        sf::Color colorMinimum  = {0, 0, 255, 255};
+        sf::Color colorSaddles  = {0, 255, 0, 255};
+        sf::Color colorLineAsc  = {255, 0, 0, 255};
+        sf::Color colorLineDesc = {0, 0, 255, 255};
+        sf::Color colorAreas    = {200, 200, 200, 255};
+
+        bool showMaximum         = true;
+        bool showMinimum         = true;
+        bool showSaddles         = true;
+        bool showLinesAscending  = true;
+        bool showLinesDescending = true;
+        bool showAreas           = true;
+
+        bool  pointSizeScaleByLife = false;
+        float pointSizeBase        = 8.0f;
+        float pointSizeMin         = 5.0f;
+        float pointSizeMax         = 16.0f;
+        bool  lineColorScaleByLife = false;
+        float lineThicknessBase    = 2.0f;
+    } m_defaults;
+
     std::vector<std::string>      m_geoFiles;
     int                           m_selectedFileIndex = -1;
     std::unique_ptr<GeoCsvParser> m_geoData;
@@ -145,7 +176,6 @@ private:
         }
     } m_groups, m_groupsInRange;
 
-    // Category visibility toggles
     struct Toggles
     {
         bool maximum         = true;
@@ -154,25 +184,30 @@ private:
         bool linesAscending  = true;
         bool linesDescending = true;
         bool areas           = true;
-    } m_toggles;
+    } m_toggles{m_defaults.showMaximum,
+                m_defaults.showMinimum,
+                m_defaults.showSaddles,
+                m_defaults.showLinesAscending,
+                m_defaults.showLinesDescending,
+                m_defaults.showAreas};
 
     DisplayMode m_displayMode = DisplayMode::Lines;
 
-    sf::Color m_colorMaximum{255, 0, 0, 255};
-    sf::Color m_colorMinimum{0, 0, 255, 255};
-    sf::Color m_colorSaddles{0, 255, 0, 255};
-    sf::Color m_colorLineAsc{255, 0, 0, 255};  // asc red
-    sf::Color m_colorLineDesc{0, 0, 255, 255}; // desc blue
-    sf::Color m_colorAreas{0, 200, 200, 200};
+    sf::Color m_colorMaximum  = m_defaults.colorMaximum;
+    sf::Color m_colorMinimum  = m_defaults.colorMinimum;
+    sf::Color m_colorSaddles  = m_defaults.colorSaddles;
+    sf::Color m_colorLineAsc  = m_defaults.colorLineAsc;  // asc red
+    sf::Color m_colorLineDesc = m_defaults.colorLineDesc; // desc blue
+    sf::Color m_colorAreas    = m_defaults.colorAreas;
 
-    bool m_pointSizeScaleByLife = false;
-    bool m_lineColorScaleByLife = false;
+    bool m_pointSizeScaleByLife = m_defaults.pointSizeScaleByLife;
+    bool m_lineColorScaleByLife = m_defaults.lineColorScaleByLife;
 
-    float m_pointSizeBase = 8.0f;
-    float m_pointSizeMin  = 5.0f;
-    float m_pointSizeMax  = 16.0f;
+    float m_pointSizeBase = m_defaults.pointSizeBase;
+    float m_pointSizeMin  = m_defaults.pointSizeMin;
+    float m_pointSizeMax  = m_defaults.pointSizeMax;
 
-    float m_lineThicknessBase = 2.0f;
+    float m_lineThicknessBase = m_defaults.lineThicknessBase;
 
     void scanDataDirectory();
 

@@ -77,6 +77,17 @@ void App::render()
     m_heatmap.draw(m_window.getView());
     m_uiManager.draw(m_heatmap, m_geoData, m_cellTooltip, m_gridOverlay);
 
+    if (m_uiManager.hasRequestedZoomReset())
+    {
+        const sf::Vector2u  winSize = m_window.getSize();
+        const sf::FloatRect visibleArea({0.f, 0.f}, static_cast<sf::Vector2f>(winSize));
+        const sf::View      defaultView(visibleArea);
+
+        m_window.setView(defaultView);
+        m_uiManager.setView(defaultView);
+        m_heatmap.updateHeatmapView(defaultView);
+    }
+
     if (m_heatmap.getAscData())
     {
         m_heatmap.getHeatmapShader().setUniform("uClampMin", m_heatmap.getCurrentClampMin());

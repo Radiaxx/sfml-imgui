@@ -526,8 +526,66 @@ void GeoData::loadData(int fileIndex)
         m_groups.clear();
         m_groupsInRange.clear();
         m_lifeMin = m_lifeMax = 0.0;
-        m_lifeFilterMin = m_lifeFilterMax = 0.0;
+        m_lifeFilterMin       = 0.0;
+        m_lifeFilterMax       = 0.0;
     }
+}
+
+void GeoData::unloadData()
+{
+    m_geoData.reset();
+    m_selectedFileIndex = -1;
+
+    m_groups.clear();
+    m_groupsInRange.clear();
+
+    m_lifeMin       = 0.0;
+    m_lifeMax       = 0.0;
+    m_lifeFilterMin = 0.0;
+    m_lifeFilterMax = 0.0;
+}
+
+void GeoData::resetColorsToDefaults()
+{
+    setMaximumColor(m_defaults.colorMaximum);
+    setMinimumColor(m_defaults.colorMinimum);
+    setSaddlesColor(m_defaults.colorSaddles);
+    setLineAscColor(m_defaults.colorLineAsc);
+    setLineDescColor(m_defaults.colorLineDesc);
+    setAreasColor(m_defaults.colorAreas);
+}
+
+void GeoData::resetVisibilityToDefaults()
+{
+    setShowMaximum(m_defaults.showMaximum);
+    setShowMinimum(m_defaults.showMinimum);
+    setShowSaddles(m_defaults.showSaddles);
+    setShowLinesAscending(m_defaults.showLinesAscending);
+    setShowLinesDescending(m_defaults.showLinesDescending);
+    setShowAreas(m_defaults.showAreas);
+}
+
+void GeoData::resetPointScalingToDefaults()
+{
+    setPointSizeScaleByLife(m_defaults.pointSizeScaleByLife);
+    setPointSizeBase(m_defaults.pointSizeBase);
+    setPointSizeRange(m_defaults.pointSizeMin, m_defaults.pointSizeMax);
+}
+
+void GeoData::resetLineAreaScalingToDefaults()
+{
+    setLineColorScaleByLife(m_defaults.lineColorScaleByLife);
+    setLineThicknessBase(m_defaults.lineThicknessBase);
+}
+
+void GeoData::resetLifeFilterToDefaults()
+{
+    if (!m_geoData)
+    {
+        return;
+    }
+
+    setLifeFilterRange(m_lifeMin, m_lifeMax);
 }
 
 void GeoData::groupEntities()

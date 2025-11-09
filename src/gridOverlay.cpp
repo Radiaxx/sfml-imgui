@@ -115,6 +115,11 @@ bool GridOverlay::isShowingValues() const
     return m_isShowingValues;
 }
 
+void GridOverlay::resetToDefaults()
+{
+    m_isShowingValues = m_defaults.showValues;
+}
+
 void GridOverlay::drawGridLines(const sf::Sprite&        sprite,
                                 const sf::View&          view,
                                 sf::RenderWindow&        window,
