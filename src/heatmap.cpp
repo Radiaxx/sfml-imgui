@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 
+#include "geoUtils.hpp"
 #include "heatmap.hpp"
 
 #define GL_R32F 0x822E // Should be imported by glad. Decide later to import the whole lib or not
@@ -298,22 +299,10 @@ void Heatmap::calculateAutoClamp(const sf::View& view)
         return;
     }
 
-    const sf::Vector2f  viewCenter = view.getCenter();
-    const sf::Vector2f  viewSize   = view.getSize();
-    const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
-    const sf::FloatRect spriteRect = m_heatmapSprite.getGlobalBounds();
-
-    // AABB Intersection between viewRect and spriteRect (world coords)
-    const sf::Vector2f aMin = spriteRect.position;
-    const sf::Vector2f aMax = spriteRect.position + spriteRect.size;
-    const sf::Vector2f bMin = viewRect.position;
-    const sf::Vector2f bMax = viewRect.position + viewRect.size;
-
-    sf::Vector2f intersectionMin{std::max(aMin.x, bMin.x), std::max(aMin.y, bMin.y)};
-    sf::Vector2f intersectionMax{std::min(aMax.x, bMax.x), std::min(aMax.y, bMax.y)};
+    const GeoUtils::VisibleArea visibleArea = GeoUtils::getVisibleAreaInLocalCoords(view, m_heatmapSprite);
 
     // No overlap so fall back to global clamp default behavior
-    if (intersectionMax.x <= intersectionMin.x || intersectionMax.y <= intersectionMin.y)
+    if (!visibleArea.isValid)
     {
         m_currentClampMin = m_globalMin;
         m_currentClampMax = m_globalMax;
@@ -321,18 +310,10 @@ void Heatmap::calculateAutoClamp(const sf::View& view)
         return;
     }
 
-    sf::FloatRect intersectionRect(intersectionMin, intersectionMax - intersectionMin);
-
-    // Get intersected (visible) sprite local coords (texture space)
-    const sf::Transform inv              = m_heatmapSprite.getInverseTransform();
-    const sf::Vector2f  topLeftLocal     = inv.transformPoint(intersectionRect.position);
-    const sf::Vector2f  bottomRightLocal = inv.transformPoint(intersectionRect.position + intersectionRect.size);
-
-    // TODO: Local coords might not be ordered if there is a negative scale. Assume that there will never be a negative scale
-    const float left   = topLeftLocal.x;
-    const float right  = bottomRightLocal.x;
-    const float top    = topLeftLocal.y;
-    const float bottom = bottomRightLocal.y;
+    const float left   = visibleArea.left;
+    const float right  = visibleArea.right;
+    const float top    = visibleArea.top;
+    const float bottom = visibleArea.bottom;
 
     const sf::Vector2u textureSize = m_heatmapTexture.getSize(); // ncols x nrows
     const float        maxX        = static_cast<float>(textureSize.x);

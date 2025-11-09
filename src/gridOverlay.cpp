@@ -1,6 +1,7 @@
 #include <imgui.h>
 #include <sstream>
 
+#include "geoUtils.hpp"
 #include "gridOverlay.hpp"
 
 const float GRID_MIN_PX = 30.f;
@@ -38,43 +39,17 @@ void GridOverlay::draw(Heatmap& heatmap, sf::RenderWindow& window)
         return;
     }
 
-    const sf::Vector2f  viewCenter = view.getCenter();
-    const sf::Vector2f  viewSize   = view.getSize();
-    const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
-    const sf::FloatRect spriteRect = sprite.getGlobalBounds();
+    const GeoUtils::VisibleArea visibleArea = GeoUtils::getVisibleAreaInLocalCoords(view, sprite);
 
-    // AABB Intersection between viewRect and spriteRect (world coords)
-    const sf::Vector2f aMin = spriteRect.position;
-    const sf::Vector2f aMax = spriteRect.position + spriteRect.size;
-    const sf::Vector2f bMin = viewRect.position;
-    const sf::Vector2f bMax = viewRect.position + viewRect.size;
-
-    sf::Vector2f intersectionMin{std::max(aMin.x, bMin.x), std::max(aMin.y, bMin.y)};
-    sf::Vector2f intersectionMax{std::min(aMax.x, bMax.x), std::min(aMax.y, bMax.y)};
-
-    // No overlap
-    if (intersectionMax.x <= intersectionMin.x || intersectionMax.y <= intersectionMin.y)
+    if (!visibleArea.isValid)
     {
         return;
     }
 
-    sf::FloatRect intersectionRect(intersectionMin, intersectionMax - intersectionMin);
-
-    // Get intersected (visible) sprite local coords (texture space)
-    const sf::Transform inv              = sprite.getInverseTransform();
-    const sf::Vector2f  topLeftLocal     = inv.transformPoint(intersectionRect.position);
-    const sf::Vector2f  bottomRightLocal = inv.transformPoint(intersectionRect.position + intersectionRect.size);
-
-    // TODO: Local coords might not be ordered if there is a negative scale. Assume that there will never be a negative scale
-    const float left   = topLeftLocal.x;
-    const float right  = bottomRightLocal.x;
-    const float top    = topLeftLocal.y;
-    const float bottom = bottomRightLocal.y;
-
-    if (right <= left || bottom <= top)
-    {
-        return;
-    }
+    const float left   = visibleArea.left;
+    const float right  = visibleArea.right;
+    const float top    = visibleArea.top;
+    const float bottom = visibleArea.bottom;
 
     const auto& header = data->getHeader();
     const int   ncols  = header.ncols;

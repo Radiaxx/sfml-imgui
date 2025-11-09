@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "geoData.hpp"
+#include "geoUtils.hpp"
 
 GeoData::GeoData()
 {
@@ -16,50 +17,20 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         return;
     }
 
-    const sf::Vector2f  viewCenter = window.getView().getCenter();
-    const sf::Vector2f  viewSize   = window.getView().getSize();
-    const sf::FloatRect viewRect(viewCenter - viewSize * 0.5f, viewSize);
-    const sf::Sprite&   heatmapSprite = heatmap.getHeatmapSprite();
-    const sf::FloatRect spriteRect    = heatmap.getHeatmapSprite().getGlobalBounds();
+    const sf::Sprite&           heatmapSprite = heatmap.getHeatmapSprite();
+    const GeoUtils::VisibleArea visibleArea   = GeoUtils::getVisibleAreaInLocalCoords(window.getView(), heatmapSprite);
 
-    // AABB Intersection between viewRect and spriteRect (world coords)
-    const sf::Vector2f aMin = spriteRect.position;
-    const sf::Vector2f aMax = spriteRect.position + spriteRect.size;
-    const sf::Vector2f bMin = viewRect.position;
-    const sf::Vector2f bMax = viewRect.position + viewRect.size;
-
-    sf::Vector2f intersectionMin{std::max(aMin.x, bMin.x), std::max(aMin.y, bMin.y)};
-    sf::Vector2f intersectionMax{std::min(aMax.x, bMax.x), std::min(aMax.y, bMax.y)};
-
-    sf::FloatRect intersectionRect(intersectionMin, intersectionMax - intersectionMin);
-
-    // Get intersected (visible) sprite local coords (texture space)
-    const sf::Transform inv              = heatmap.getHeatmapSprite().getInverseTransform();
-    const sf::Vector2f  topLeftLocal     = inv.transformPoint(intersectionRect.position);
-    const sf::Vector2f  bottomRightLocal = inv.transformPoint(intersectionRect.position + intersectionRect.size);
-
-    // TODO: Local coords might not be ordered if there is a negative scale. Assume that there will never be a negative scale
-    const float left   = topLeftLocal.x;
-    const float right  = bottomRightLocal.x;
-    const float top    = topLeftLocal.y;
-    const float bottom = bottomRightLocal.y;
-
-    if (right <= left || bottom <= top)
+    if (!visibleArea.isValid)
     {
         return;
     }
 
+    const float left   = visibleArea.left;
+    const float right  = visibleArea.right;
+    const float top    = visibleArea.top;
+    const float bottom = visibleArea.bottom;
+
     const auto& ascHeader = heatmap.getAscData()->getHeader();
-
-    auto wktToLocal = [&](const GeoCsvParser::Point& point) -> sf::Vector2f
-    {
-        const double cell   = ascHeader.cellsize;
-        const double xLocal = (point.x - ascHeader.xllcorner) / cell;
-        const double yTop   = ascHeader.yllcorner + static_cast<double>(ascHeader.nrows) * cell;
-        const double yLocal = (yTop - point.y) / cell; // must flip Y to match sprite top left origin
-
-        return {static_cast<float>(xLocal), static_cast<float>(yLocal)};
-    };
 
     auto getLifeScaledPointSize = [&](double life) -> float
     {
@@ -213,7 +184,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
                 continue;
             }
 
-            const sf::Vector2f localPoint = wktToLocal(entity->geom.point);
+            const sf::Vector2f localPoint = GeoUtils::wktToLocal(entity->geom.point, ascHeader);
 
             // Cull only the ones in visible sprite area
             if (!isPointWithinVisibleArea(localPoint))
@@ -256,8 +227,8 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             // Draw segments as rectangles
             for (std::size_t i = 0; i + 1 < path.size(); ++i)
             {
-                const sf::Vector2f aLocal = wktToLocal(path[i]);
-                const sf::Vector2f bLocal = wktToLocal(path[i + 1]);
+                const sf::Vector2f aLocal = GeoUtils::wktToLocal(path[i], ascHeader);
+                const sf::Vector2f bLocal = GeoUtils::wktToLocal(path[i + 1], ascHeader);
 
                 // Draw if at least one endpoint is visible in the current view
                 if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
@@ -274,7 +245,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             // Draw joint circles at endpoints
             for (const auto& endpoint : path)
             {
-                const sf::Vector2f localPosition = wktToLocal(endpoint);
+                const sf::Vector2f localPosition = GeoUtils::wktToLocal(endpoint, ascHeader);
 
                 if (!isPointWithinVisibleArea(localPosition))
                 {
@@ -335,8 +306,8 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             // Draw segments as rectangles
             for (std::size_t i = 0; i + 1 < path.size(); ++i)
             {
-                const sf::Vector2f aLocal = wktToLocal(path[i]);
-                const sf::Vector2f bLocal = wktToLocal(path[i + 1]);
+                const sf::Vector2f aLocal = GeoUtils::wktToLocal(path[i], ascHeader);
+                const sf::Vector2f bLocal = GeoUtils::wktToLocal(path[i + 1], ascHeader);
 
                 // Draw if at least one endpoint is visible in the current view
                 if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
@@ -353,7 +324,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             // Draw joint circles at endpoints
             for (const auto& endpoint : path)
             {
-                const sf::Vector2f localPosition = wktToLocal(endpoint);
+                const sf::Vector2f localPosition = GeoUtils::wktToLocal(endpoint, ascHeader);
 
                 if (!isPointWithinVisibleArea(localPosition))
                 {
@@ -380,8 +351,8 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
             {
                 const std::size_t j = (i + 1) % N;
 
-                const sf::Vector2f aLocal = wktToLocal(ring[i]);
-                const sf::Vector2f bLocal = wktToLocal(ring[j]);
+                const sf::Vector2f aLocal = GeoUtils::wktToLocal(ring[i], ascHeader);
+                const sf::Vector2f bLocal = GeoUtils::wktToLocal(ring[j], ascHeader);
 
                 if (!isPointWithinVisibleArea(aLocal) && !isPointWithinVisibleArea(bLocal))
                 {
@@ -396,7 +367,7 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
 
             for (const auto& point : ring)
             {
-                const sf::Vector2f localPosition = wktToLocal(point);
+                const sf::Vector2f localPosition = GeoUtils::wktToLocal(point, ascHeader);
                 if (!isPointWithinVisibleArea(localPosition))
                 {
                     continue;

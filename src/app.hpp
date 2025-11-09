@@ -47,6 +47,7 @@ private:
 
     void handleWindowClose();
     void handleWindowResize(const sf::Event::Resized& newSize);
+    void updateViewsFromWindowSize(const sf::Vector2u& windowSize);
 };
 
 #endif

@@ -79,13 +79,7 @@ void App::render()
 
     if (m_uiManager.hasRequestedZoomReset())
     {
-        const sf::Vector2u  winSize = m_window.getSize();
-        const sf::FloatRect visibleArea({0.f, 0.f}, static_cast<sf::Vector2f>(winSize));
-        const sf::View      defaultView(visibleArea);
-
-        m_window.setView(defaultView);
-        m_uiManager.setView(defaultView);
-        m_heatmap.updateHeatmapView(defaultView);
+        updateViewsFromWindowSize(m_window.getSize());
     }
 
     if (m_heatmap.getAscData())
@@ -110,13 +104,18 @@ void App::handleWindowClose()
     m_window.close();
 }
 
-void App::handleWindowResize(const sf::Event::Resized& resized)
+void App::updateViewsFromWindowSize(const sf::Vector2u& windowSize)
 {
-    sf::Vector2u  windowSize(resized.size.x, resized.size.y);
-    sf::FloatRect visibleArea({0.f, 0.f}, static_cast<sf::Vector2f>(windowSize));
+    const sf::FloatRect visibleArea({0.f, 0.f}, static_cast<sf::Vector2f>(windowSize));
+    const sf::View      view(visibleArea);
 
-    const sf::View view = sf::View(visibleArea);
     m_window.setView(view);
     m_uiManager.setView(view);
     m_heatmap.updateHeatmapView(view);
+}
+
+void App::handleWindowResize(const sf::Event::Resized& resized)
+{
+    sf::Vector2u windowSize(resized.size.x, resized.size.y);
+    updateViewsFromWindowSize(windowSize);
 }

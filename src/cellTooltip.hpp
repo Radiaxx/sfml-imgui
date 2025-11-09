@@ -16,6 +16,7 @@
 
 #include "geoCsvParser.hpp"
 #include "geoData.hpp"
+#include "geoUtils.hpp"
 #include "heatmap.hpp"
 
 class CellTooltip
@@ -32,8 +33,6 @@ public:
 
     void show(Heatmap& heatmap, sf::RenderWindow& window, const GeoData& geoData, int screenX, int screenY);
     void hide();
-
-    sf::Vector2f wktToLocal(const GeoCsvParser::Point& point, const AscParser::Header& header);
 
     // Boost.Geometry aliases
     using BPoint   = boost::geometry::model::d2::point_xy<float>;

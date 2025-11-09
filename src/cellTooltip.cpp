@@ -229,16 +229,6 @@ void CellTooltip::rebuildSpatialIndex(const Heatmap& heatmap, const GeoData& geo
     m_areaSegs     = SegmentsRTree(areaSegments.begin(), areaSegments.end());
 }
 
-sf::Vector2f CellTooltip::wktToLocal(const GeoCsvParser::Point& point, const AscParser::Header& header)
-{
-    const double cellSize = header.cellsize;
-    const double xLocal   = (point.x - header.xllcorner) / cellSize;
-    const double yTop     = header.yllcorner + static_cast<double>(header.nrows) * cellSize;
-    const double yLocal   = (yTop - point.y) / cellSize;
-
-    return {static_cast<float>(xLocal), static_cast<float>(yLocal)};
-}
-
 CellTooltip::BBox CellTooltip::getLocalPickBBox(const sf::Vector2i      mousePixel,
                                                 float                   radiusPixel,
                                                 const sf::RenderWindow& window,
@@ -336,7 +326,7 @@ void CellTooltip::collectPoints(const Heatmap& heatmap, const GeoData& geoData, 
             continue;
         }
 
-        const sf::Vector2f localPosition = wktToLocal(entity.geom.point, header);
+        const sf::Vector2f localPosition = GeoUtils::wktToLocal(entity.geom.point, header);
 
         out.emplace_back(BPoint(localPosition.x, localPosition.y), &entity);
     }
@@ -354,8 +344,8 @@ void CellTooltip::addSegmentsForOpenPath(const std::vector<GeoCsvParser::Point>&
 
     for (size_t i = 0; i + 1 < points.size(); ++i)
     {
-        const sf::Vector2f a = wktToLocal(points[i], header);
-        const sf::Vector2f b = wktToLocal(points[i + 1], header);
+        const sf::Vector2f a = GeoUtils::wktToLocal(points[i], header);
+        const sf::Vector2f b = GeoUtils::wktToLocal(points[i + 1], header);
 
         out.emplace_back(BSegment(BPoint(a.x, a.y), BPoint(b.x, b.y)), owner);
     }
@@ -376,8 +366,8 @@ void CellTooltip::addSegmentsForClosedRing(const std::vector<GeoCsvParser::Point
     for (size_t i = 0; i < ringSize; ++i)
     {
         const size_t       j = (i + 1) % ringSize;
-        const sf::Vector2f a = wktToLocal(ring[i], header);
-        const sf::Vector2f b = wktToLocal(ring[j], header);
+        const sf::Vector2f a = GeoUtils::wktToLocal(ring[i], header);
+        const sf::Vector2f b = GeoUtils::wktToLocal(ring[j], header);
 
         out.emplace_back(BSegment(BPoint(a.x, a.y), BPoint(b.x, b.y)), owner);
     }
