@@ -29,7 +29,7 @@ public:
 
     GeoData();
 
-    void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window);
+    void draw(Heatmap& heatmap, sf::RenderWindow& window);
 
     void loadData(int fileIndex);
     void unloadData();
