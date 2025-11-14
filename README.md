@@ -48,21 +48,21 @@ cmake --build build --config Release
 
 ### Project Components
 - **Main target**: `sfml-imgui` (C++17)
-- **Utility libraries**: `AscParser`, `GeoCsvParser` (static)
+- **Utility libraries**: `AscParser`, `GeoCsvParser`, `GeoUtils` (static)
 - **Dependencies**: `SFML::Graphics`, `ImGui-SFML::ImGui-SFML`
 
 ## Running the Application
 
 ```bash
-# From the root directory
-./release/sfml-imgui
+# From the repository root
+./build/bin/sfml-imgui
 ```
 
 ## User Guide
 
 ### 1. Loading Data
 
-1. Place one or more `.asc` files in the `data/` directory
+1. Place one or more `.asc` files in the `data/asc/` directory
 2. Launch the application (files are auto discovered)
 3. Select a dataset from **Control Panel -> Dataset**
 

@@ -122,6 +122,7 @@ void UIManager::draw(Heatmap& heatmap, GeoData& geoData, CellTooltip& cellToolti
                 {
                     heatmap.loadData(i);
                     heatmap.updateHeatmapView(m_view);
+                    cellTooltip.rebuildSpatialIndex(heatmap, geoData);
                 }
             }
             if (is_selected)
