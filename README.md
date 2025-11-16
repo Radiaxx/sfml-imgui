@@ -34,9 +34,10 @@ sfml-imgui/
 
 ### Prerequisites
 - CMake 3.28+
-- C++ 17 compatible compiler
+- C++17 compatible compiler
 - SFML 3
 - Dear ImGui
+- Boost 1.89.0
 
 ### Build Steps
 
@@ -48,7 +49,7 @@ cmake --build build --config Release
 
 ### Project Components
 - **Main target**: `sfml-imgui` (C++17)
-- **Utility libraries**: `AscParser`, `GeoCsvParser`, `GeoUtils` (static)
+- **Utility libraries**: `AscParser`, `GeoCsvParser`, `GeoUtils` (as static libs)
 - **Dependencies**: `SFML::Graphics`, `ImGui-SFML::ImGui-SFML`
 
 ## Running the Application
