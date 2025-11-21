@@ -78,28 +78,32 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
 
     triangles.reserve(triangleVertices + saddleVertices + lineAscVertices + lineDescVertices + areaVertices);
 
-    auto triangleUp = [&](sf::Vector2f center, float sideLength, sf::Color color)
+    auto triangleUp = [&](sf::Vector2f center, float radius, sf::Color color)
     {
         // Equilateral triangle with pivot at the center position
-        const float        sqrt32 = 0.866025403784f; // sqrt(3) / 2
-        const float        height = sqrt32 * sideLength;
-        const sf::Vector2f p1(center.x, center.y - (2.f / 3.f) * height);                     // apex up
-        const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base left
-        const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y + (1.f / 3.f) * height); // base right
+        const float side       = radius * 1.732050807568f; // because radius = s / sqrt(3)
+        const float halfSide   = side * 0.5f;
+        const float halfRadius = radius * 0.5f; // 1 / 3 of height = 0.5 * radius for an equilateral
+
+        const sf::Vector2f p1(center.x, center.y - radius);                // apex up
+        const sf::Vector2f p2(center.x - halfSide, center.y + halfRadius); // base left
+        const sf::Vector2f p3(center.x + halfSide, center.y + halfRadius); // base right
 
         triangles.push_back(sf::Vertex{p1, color});
         triangles.push_back(sf::Vertex{p2, color});
         triangles.push_back(sf::Vertex{p3, color});
     };
 
-    auto triangleDown = [&](sf::Vector2f center, float sideLength, sf::Color color)
+    auto triangleDown = [&](sf::Vector2f center, float radius, sf::Color color)
     {
         // Equilateral triangle with pivot at the center position
-        const float        sqrt32 = 0.866025403784f; // sqrt(3) / 2
-        const float        height = sqrt32 * sideLength;
-        const sf::Vector2f p1(center.x, center.y + (2.f / 3.f) * height);                     // apex down
-        const sf::Vector2f p2(center.x - sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base left
-        const sf::Vector2f p3(center.x + sideLength * 0.5f, center.y - (1.f / 3.f) * height); // base right
+        const float side       = radius * 1.732050807568f; // because radius = s / sqrt(3)
+        const float halfSide   = side * 0.5f;
+        const float halfRadius = radius * 0.5f; // 1 / 3 of height = 0.5 * radius for an equilateral
+
+        const sf::Vector2f p1(center.x, center.y + radius);                // apex down
+        const sf::Vector2f p2(center.x - halfSide, center.y - halfRadius); // base left
+        const sf::Vector2f p3(center.x + halfSide, center.y - halfRadius); // base right
 
         triangles.push_back(sf::Vertex{p1, color});
         triangles.push_back(sf::Vertex{p2, color});
@@ -162,13 +166,21 @@ void GeoData::draw(Heatmap& heatmap, sf::RenderWindow& window)
         }
     };
 
-    auto cross = [&](sf::Vector2f center, float side, sf::Color color)
+    auto cross = [&](sf::Vector2f center, float radius, sf::Color color)
     {
-        const float length    = side * 0.6f;
-        const float thickness = std::max(2.0f, side * 0.18f);
+        // Endpoints at + and - (radius / sqrt(2)). Place the corners at the distance of radius
+        const float armHalfLen = radius * 0.707106781186f; // inverse sqrt(2)
 
-        appendRectangle({center.x - length, center.y - length}, {center.x + length, center.y + length}, thickness, color);
-        appendRectangle({center.x - length, center.y + length}, {center.x + length, center.y - length}, thickness, color);
+        const sf::Vector2f topLeftCorner(center.x - armHalfLen, center.y - armHalfLen);
+        const sf::Vector2f bottomRightCorner(center.x + armHalfLen, center.y + armHalfLen);
+        const sf::Vector2f bottomLeftCorner(center.x - armHalfLen, center.y + armHalfLen);
+        const sf::Vector2f topRightCorner(center.x + armHalfLen, center.y - armHalfLen);
+
+        // Thickness must be proportional to the radius
+        const float crossThickness = std::max(2.0f, radius * 0.20f);
+
+        appendRectangle(topLeftCorner, bottomRightCorner, crossThickness, color);
+        appendRectangle(bottomLeftCorner, topRightCorner, crossThickness, color);
     };
 
     auto isPointWithinVisibleArea = [&](const sf::Vector2f& point) -> bool
